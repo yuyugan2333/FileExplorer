@@ -6,6 +6,8 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainView {
     private BorderPane root;
@@ -161,6 +163,14 @@ public class MainView {
             gridView.setVisible(false);
             tableView.setVisible(true);
         }
+    }
+
+    public List<FileItem> getSelectedFileItems() {
+        return new ArrayList<>(getTableView().getSelectionModel().getSelectedItems());
+    }
+
+    public FileItem getSelectedFileItem() {
+        return getTableView().getSelectionModel().getSelectedItem();
     }
 
     // 示例大小格式化（可移到FileUtils）

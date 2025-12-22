@@ -15,6 +15,7 @@ import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
@@ -111,6 +112,16 @@ public class FileExplorerController {
         // 右键菜单 for 操作
         ContextMenu contextMenu = createContextMenu();
         mainView.getTableView().setContextMenu(contextMenu);
+
+        // 同时添加网格视图的右键菜单支持
+        mainView.getGridView().setOnContextMenuRequested(event -> {
+            // 可以在这里实现网格视图的右键菜单
+            contextMenu.show(mainView.getGridView(), event.getScreenX(), event.getScreenY());
+        });
+
+        // 为目录树也添加右键菜单
+        ContextMenu treeContextMenu = createTreeContextMenu();
+        mainView.getTreeView().setContextMenu(treeContextMenu);
     }
 
     private void loadDirectoryTree() {
@@ -146,6 +157,63 @@ public class FileExplorerController {
 
         // 展开事件加载子项
         rootItem.getChildren().forEach(this::addExpansionListener);
+    }
+
+    private ContextMenu createTreeContextMenu() {
+        ContextMenu menu = new ContextMenu();
+
+        MenuItem newFolder = new MenuItem("新建文件夹");
+        MenuItem refresh = new MenuItem("刷新");
+        MenuItem properties = new MenuItem("属性");
+
+        newFolder.setOnAction(e -> {
+            TreeItem<Path> selected = mainView.getTreeView().getSelectionModel().getSelectedItem();
+            if (selected != null && selected.getValue() != null) {
+                // 获取选中的目录路径
+                Path targetPath = selected.getValue();
+
+                TextInputDialog dialog = new TextInputDialog("新建文件夹");
+                dialog.setTitle("新建文件夹");
+                dialog.setHeaderText("在 " + targetPath.getFileName() + " 中创建新文件夹");
+                dialog.setContentText("请输入文件夹名称:");
+
+                dialog.showAndWait().ifPresent(folderName -> {
+                    if (!folderName.trim().isEmpty()) {
+                        try {
+                            Path newFolderPath = targetPath.resolve(folderName.trim());
+                            if (Files.exists(newFolderPath)) {
+                                showAlert("错误", "文件夹已存在: " + folderName);
+                                return;
+                            }
+                            Files.createDirectory(newFolderPath);
+                            // 刷新树视图
+                            loadDirectoryTree();
+                            // 如果当前在此目录，也刷新文件列表
+                            if (targetPath.equals(currentPath)) {
+                                loadFiles(currentPath);
+                            }
+                        } catch (IOException ex) {
+                            showAlert("错误", "创建文件夹失败: " + ex.getMessage());
+                        }
+                    }
+                });
+            }
+        });
+
+        refresh.setOnAction(e -> {
+            // 重新加载目录树
+            loadDirectoryTree();
+        });
+
+        properties.setOnAction(e -> {
+            TreeItem<Path> selected = mainView.getTreeView().getSelectionModel().getSelectedItem();
+            if (selected != null && selected.getValue() != null) {
+                showFileDetails(selected.getValue());
+            }
+        });
+
+        menu.getItems().addAll(newFolder, refresh, new SeparatorMenuItem(), properties);
+        return menu;
     }
 
     private TreeItem<Path> createTreeItem(Path path) {
@@ -232,18 +300,21 @@ public class FileExplorerController {
         int col = 0, row = 0;
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
             for (Path entry : stream) {
+                // 创建局部final变量，确保每个lambda捕获不同的值
+                final Path currentEntry = entry;
                 Button iconButton = new Button(entry.getFileName().toString());
+
                 // 添加图标等（可选，后续可以优化）
                 // iconButton.setGraphic(...);
 
-                // 关键修改：判断是文件夹还是文件
+                // 关键修复：使用局部final变量
                 iconButton.setOnAction(e -> {
-                    if (Files.isDirectory(entry)) {
+                    if (Files.isDirectory(currentEntry)) {
                         // 如果是文件夹，导航进入
-                        navigateTo(entry);
+                        navigateTo(currentEntry);
                     } else {
                         // 如果是文件，用系统程序打开
-                        openFile(entry);
+                        openFile(currentEntry);
                     }
                 });
 
@@ -283,7 +354,11 @@ public class FileExplorerController {
     // 文件操作方法
     public void copyFile(Path source, Path target) {
         try {
-            Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+            if (Files.isDirectory(source)) {
+                copyDirectory(source, target);
+            } else {
+                Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+            }
             loadFiles(currentPath); // 刷新
         } catch (IOException e) {
             showAlert("错误", "复制失败: " + e.getMessage());
@@ -326,7 +401,20 @@ public class FileExplorerController {
 
     public void renameFile(Path path, String newName) {
         try {
-            Files.move(path, path.resolveSibling(newName));
+            // 检查新名称是否有效
+            if (newName == null || newName.trim().isEmpty() || newName.contains("/") || newName.contains("\\")) {
+                showAlert("错误", "无效的文件名");
+                return;
+            }
+
+            Path target = path.resolveSibling(newName);
+            if (Files.exists(target)) {
+                if (!showConfirmDialog("确认覆盖", "文件 " + newName + " 已存在，是否覆盖？")) {
+                    return;
+                }
+            }
+
+            Files.move(path, target, StandardCopyOption.REPLACE_EXISTING);
             loadFiles(currentPath);
         } catch (IOException e) {
             showAlert("错误", "重命名失败: " + e.getMessage());
@@ -334,9 +422,15 @@ public class FileExplorerController {
     }
 
     public void createFolder(String name) {
-        if (currentPath == null) return;
+        if (currentPath == null || name == null || name.trim().isEmpty()) return;
+
         try {
-            Files.createDirectory(currentPath.resolve(name));
+            Path newFolder = currentPath.resolve(name.trim());
+            if (Files.exists(newFolder)) {
+                showAlert("错误", "文件夹已存在: " + name);
+                return;
+            }
+            Files.createDirectory(newFolder);
             loadFiles(currentPath);
         } catch (IOException e) {
             showAlert("错误", "创建文件夹失败: " + e.getMessage());
@@ -346,30 +440,205 @@ public class FileExplorerController {
     // 右键菜单
     private ContextMenu createContextMenu() {
         ContextMenu menu = new ContextMenu();
+
+        // 创建菜单项
         MenuItem copy = new MenuItem("复制");
-        MenuItem move = new MenuItem("移动");
+        MenuItem cut = new MenuItem("剪切");
+        MenuItem paste = new MenuItem("粘贴");
         MenuItem delete = new MenuItem("删除");
         MenuItem rename = new MenuItem("重命名");
-        MenuItem details = new MenuItem("属性");
+        MenuItem newFolder = new MenuItem("新建文件夹");
+        MenuItem properties = new MenuItem("属性");
+        SeparatorMenuItem separator1 = new SeparatorMenuItem();
+        SeparatorMenuItem separator2 = new SeparatorMenuItem();
 
+        // 定义剪贴板（用于复制/移动操作）
+        class Clipboard {
+            List<Path> files = new ArrayList<>();
+            boolean isCutOperation = false; // true表示剪切，false表示复制
+        }
+        Clipboard clipboard = new Clipboard();
+
+        // 复制功能
         copy.setOnAction(e -> {
-            FileItem selected = mainView.getTableView().getSelectionModel().getSelectedItem();
-            if (selected != null) {
-                // 简化：假设目标为当前目录子文件夹，实际需选择目标
-                copyFile(selected.getPath(), currentPath.resolve("copy_" + selected.getName()));
+            List<FileItem> selectedItems = mainView.getSelectedFileItems();
+            if (!selectedItems.isEmpty()) {
+                clipboard.files.clear();
+                selectedItems.forEach(item -> clipboard.files.add(item.getPath()));
+                clipboard.isCutOperation = false;
+                showInfo("已复制 " + selectedItems.size() + " 个项目");
             }
         });
 
-        // 类似为其他项添加逻辑（move, delete, rename, details）
+        // 剪切功能
+        cut.setOnAction(e -> {
+            List<FileItem> selectedItems = mainView.getSelectedFileItems();
+            if (!selectedItems.isEmpty()) {
+                clipboard.files.clear();
+                selectedItems.forEach(item -> clipboard.files.add(item.getPath()));
+                clipboard.isCutOperation = true;
+                showInfo("已剪切 " + selectedItems.size() + " 个项目");
+            }
+        });
 
-        menu.getItems().addAll(copy, move, delete, rename, details);
+        // 粘贴功能
+        paste.setOnAction(e -> {
+            if (clipboard.files.isEmpty() || currentPath == null) {
+                return;
+            }
+
+            for (Path source : clipboard.files) {
+                Path target = currentPath.resolve(source.getFileName());
+
+                // 处理同名文件
+                if (Files.exists(target)) {
+                    if (!showConfirmDialog("文件已存在", "文件 " + target.getFileName() + " 已存在，是否覆盖？")) {
+                        continue;
+                    }
+                }
+
+                try {
+                    if (clipboard.isCutOperation) {
+                        // 移动文件
+                        Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+                    } else {
+                        // 复制文件
+                        if (Files.isDirectory(source)) {
+                            copyDirectory(source, target);
+                        } else {
+                            Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+                        }
+                    }
+                } catch (IOException ex) {
+                    showAlert("错误", "操作失败: " + ex.getMessage());
+                }
+            }
+
+            // 如果是剪切操作，清空剪贴板
+            if (clipboard.isCutOperation) {
+                clipboard.files.clear();
+            }
+
+            // 刷新文件列表
+            loadFiles(currentPath);
+        });
+
+        // 删除功能
+        delete.setOnAction(e -> {
+            List<FileItem> selectedItems = mainView.getSelectedFileItems();
+            if (selectedItems.isEmpty()) {
+                return;
+            }
+
+            // 确认对话框
+            String message = "确定要删除选中的 " + selectedItems.size() + " 个项目吗？";
+            if (selectedItems.size() == 1) {
+                message = "确定要删除 \"" + selectedItems.get(0).getName() + "\" 吗？";
+            }
+
+            if (showConfirmDialog("确认删除", message)) {
+                for (FileItem item : selectedItems) {
+                    deleteFile(item.getPath());
+                }
+                showInfo("已删除 " + selectedItems.size() + " 个项目");
+            }
+        });
+
+        // 重命名功能
+        rename.setOnAction(e -> {
+            FileItem selected = mainView.getSelectedFileItem();
+            if (selected == null) {
+                return;
+            }
+
+            TextInputDialog dialog = new TextInputDialog(selected.getName());
+            dialog.setTitle("重命名");
+            dialog.setHeaderText("重命名文件");
+            dialog.setContentText("请输入新名称:");
+
+            dialog.showAndWait().ifPresent(newName -> {
+                if (!newName.trim().isEmpty() && !newName.equals(selected.getName())) {
+                    renameFile(selected.getPath(), newName.trim());
+                }
+            });
+        });
+
+        // 新建文件夹功能
+        newFolder.setOnAction(e -> {
+            TextInputDialog dialog = new TextInputDialog("新建文件夹");
+            dialog.setTitle("新建文件夹");
+            dialog.setHeaderText("创建新文件夹");
+            dialog.setContentText("请输入文件夹名称:");
+
+            dialog.showAndWait().ifPresent(folderName -> {
+                if (!folderName.trim().isEmpty()) {
+                    createFolder(folderName.trim());
+                }
+            });
+        });
+
+        // 属性功能
+        properties.setOnAction(e -> {
+            FileItem selected = mainView.getSelectedFileItem();
+            if (selected != null) {
+                showFileDetails(selected.getPath());
+            }
+        });
+
+        // 将菜单项添加到右键菜单
+        menu.getItems().addAll(copy, cut, paste, separator1, delete, rename, newFolder, separator2, properties);
+
         return menu;
     }
 
-    private void showAlert(String title, String message) {
+    private void copyDirectory(Path source, Path target) throws IOException {
+        Files.walkFileTree(source, new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                Path targetDir = target.resolve(source.relativize(dir));
+                Files.createDirectories(targetDir);
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                Files.copy(file, target.resolve(source.relativize(file)), StandardCopyOption.REPLACE_EXISTING);
+                return FileVisitResult.CONTINUE;
+            }
+        });
+    }
+
+    // 显示信息对话框
+    private void showInfo(String message) {
         Platform.runLater(() -> {
-            Alert alert = new Alert(Alert.AlertType.ERROR);
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("信息");
+            alert.setHeaderText(null);
+            alert.setContentText(message);
+            alert.showAndWait();
+        });
+    }
+
+    // 显示确认对话框
+    private boolean showConfirmDialog(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+
+        Optional<ButtonType> result = alert.showAndWait();
+        return result.isPresent() && result.get() == ButtonType.OK;
+    }
+
+    private void showAlert(String title, String message) {
+        showAlert(title, message, Alert.AlertType.ERROR);
+    }
+
+    private void showAlert(String title, String message, Alert.AlertType type) {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(type);
             alert.setTitle(title);
+            alert.setHeaderText(null);
             alert.setContentText(message);
             alert.showAndWait();
         });
