@@ -1,4 +1,4 @@
-package com.fileexpiorer;
+package com.fileexplorer;
 
 import javafx.geometry.Insets;
 import javafx.scene.control.ButtonType;

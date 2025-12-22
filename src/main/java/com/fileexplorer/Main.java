@@ -1,4 +1,4 @@
-package com.fileexpiorer;
+package com.fileexplorer;
 
 import javafx.application.Application;
 import javafx.scene.Scene;  // 需要导入Scene类

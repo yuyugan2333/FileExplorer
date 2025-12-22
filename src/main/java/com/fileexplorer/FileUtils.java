@@ -1,4 +1,4 @@
-package com.fileexpiorer;
+package com.fileexplorer;
 
 // package com.fileexplorer; // 如果使用包，添加此行；否则移除
 
@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 public class FileUtils {

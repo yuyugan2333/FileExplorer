@@ -1,4 +1,4 @@
-package com.fileexpiorer;
+package com.fileexplorer;
 
 import javafx.beans.property.*;
 import java.io.IOException;

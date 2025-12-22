@@ -1,4 +1,4 @@
-package com.fileexpiorer;
+package com.fileexplorer;
 
 import javafx.application.Platform;
 import javafx.concurrent.Task;
