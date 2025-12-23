@@ -7,7 +7,9 @@ import javafx.scene.layout.GridPane;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class MainView {
     private BorderPane root;
@@ -20,6 +22,7 @@ public class MainView {
     private Button forwardButton;
     private Button upButton; // 上一级目录
     private TextField pathField;
+    private final Set<FileItem> selectedItemsInGrid = new HashSet<>();
 
     public MainView() {
         initializeLayout();
@@ -148,12 +151,16 @@ public class MainView {
 
         tableView.getColumns().addAll(nameColumn, sizeColumn, modifiedColumn);
         tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
+        // 新增：启用多选模式
+        tableView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
     }
 
     // 切换视图模式（列表 <-> 网格）
     public void switchViewMode() {
         isGridMode = !isGridMode;
         if (isGridMode) {
+            selectedItemsInGrid.clear();  // 清空 Grid 选中
             root.setCenter(gridView);
             tableView.setVisible(false);
             gridView.setVisible(true);
@@ -166,11 +173,20 @@ public class MainView {
     }
 
     public List<FileItem> getSelectedFileItems() {
-        return new ArrayList<>(getTableView().getSelectionModel().getSelectedItems());
+        if (isGridMode) {
+            return new ArrayList<>(selectedItemsInGrid);
+        } else {
+            return new ArrayList<>(getTableView().getSelectionModel().getSelectedItems());
+        }
+    }
+
+    public Set<FileItem> getSelectedItemsInGrid() {
+        return selectedItemsInGrid;
     }
 
     public FileItem getSelectedFileItem() {
-        return getTableView().getSelectionModel().getSelectedItem();
+        List<FileItem> selected = getSelectedFileItems();
+        return selected.isEmpty() ? null : selected.get(0);
     }
 
     // 示例大小格式化（可移到FileUtils）

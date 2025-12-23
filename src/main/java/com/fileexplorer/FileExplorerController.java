@@ -8,6 +8,8 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.input.MouseButton;
 import javafx.stage.Stage;
 import javafx.util.Callback;
+import javafx.scene.Node;
+import javafx.scene.input.MouseEvent;
 
 import java.awt.*;
 import java.io.IOException;
@@ -16,6 +18,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
@@ -297,26 +300,22 @@ public class FileExplorerController {
 
     private void loadGridView(Path dir) {
         mainView.getGridView().getChildren().clear();
+        mainView.getSelectedItemsInGrid().clear();  // 清空选中项
+
         int col = 0, row = 0;
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
             for (Path entry : stream) {
-                // 创建局部final变量，确保每个lambda捕获不同的值
-                final Path currentEntry = entry;
+                // 创建 FileItem
+                FileItem item = new FileItem(entry);
+
+                // 使用 Button 表示文件/文件夹
                 Button iconButton = new Button(entry.getFileName().toString());
 
-                // 添加图标等（可选，后续可以优化）
-                // iconButton.setGraphic(...);
+                // 设置 UserData 为 FileItem，便于获取
+                iconButton.setUserData(item);
 
-                // 关键修复：使用局部final变量
-                iconButton.setOnAction(e -> {
-                    if (Files.isDirectory(currentEntry)) {
-                        // 如果是文件夹，导航进入
-                        navigateTo(currentEntry);
-                    } else {
-                        // 如果是文件，用系统程序打开
-                        openFile(currentEntry);
-                    }
-                });
+                // 添加鼠标点击事件处理多选和打开
+                iconButton.setOnMouseClicked(event -> handleGridItemClick(event, iconButton, item));
 
                 mainView.getGridView().add(iconButton, col++, row);
                 if (col > 4) { // 每行5个
@@ -326,6 +325,44 @@ public class FileExplorerController {
             }
         } catch (IOException e) {
             showAlert("错误", "加载网格视图失败: " + e.getMessage());
+        }
+    }
+
+    private void handleGridItemClick(MouseEvent event, Button button, FileItem item) {
+        if (event.getButton() == MouseButton.PRIMARY) {
+            if (event.getClickCount() == 2) {
+                // 双击：打开文件或进入目录
+                if (Files.isDirectory(item.getPath())) {
+                    navigateTo(item.getPath());
+                } else {
+                    openFile(item.getPath());
+                }
+            } else {
+                // 单击：处理选中
+                Set<FileItem> selected = mainView.getSelectedItemsInGrid();
+
+                if (event.isControlDown()) {
+                    // Ctrl + 点击：切换选中状态
+                    if (selected.contains(item)) {
+                        selected.remove(item);
+                        button.getStyleClass().remove("selected");
+                    } else {
+                        selected.add(item);
+                        button.getStyleClass().add("selected");
+                    }
+                } else {
+                    // 无修饰键：清空其他选中，只选中当前
+                    // 先清空所有按钮的选中样式
+                    for (Node node : mainView.getGridView().getChildren()) {
+                        if (node instanceof Button) {
+                            node.getStyleClass().remove("selected");
+                        }
+                    }
+                    selected.clear();
+                    selected.add(item);
+                    button.getStyleClass().add("selected");
+                }
+            }
         }
     }
 
