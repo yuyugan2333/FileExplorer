@@ -23,6 +23,7 @@ public class MainView {
     private Button upButton; // 上一级目录
     private TextField pathField;
     private final Set<FileItem> selectedItemsInGrid = new HashSet<>();
+    private Label statusLabel;
 
     public MainView() {
         initializeLayout();
@@ -88,13 +89,28 @@ public class MainView {
         Separator separator2 = new Separator();
         separator2.setOrientation(javafx.geometry.Orientation.VERTICAL);
 
+        // 状态栏
+        statusLabel = new Label("就绪");
+        statusLabel.setPadding(new javafx.geometry.Insets(0, 10, 0, 10));
+
+        // 创建一个区域来推动状态栏到右侧
+        javafx.scene.layout.Region spacer = new javafx.scene.layout.Region();
+        javafx.scene.layout.HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
+
+        // 只添加一次！
         toolBar.getItems().addAll(
                 backButton, forwardButton, upButton,
                 separator1,
                 pathField,
                 separator2,
-                searchField, refreshButton, modeButton
+                searchField, refreshButton, modeButton,
+                spacer,
+                statusLabel
         );
+    }
+
+    public Label getStatusLabel() {
+        return statusLabel;
     }
 
     private void createTreeView() {
@@ -231,33 +247,44 @@ public class MainView {
 
     // 修改现有的getter方法，通过控件ID或类型获取
     public TextField getSearchField() {
-        // 现在是第5个元素（索引4），因为前面添加了控件
+        // 给控件添加ID，通过ID查找
         for (javafx.scene.Node node : toolBar.getItems()) {
-            if (node instanceof TextField && ((TextField) node).getPromptText().equals("搜索文件...")) {
-                return (TextField) node;
+            if (node instanceof TextField) {
+                TextField field = (TextField) node;
+                if (field.getPromptText() != null && field.getPromptText().equals("搜索文件...")) {
+                    return field;
+                }
             }
         }
         return null;
     }
 
     public Button getRefreshButton() {
-        // 现在是第6个元素（索引5）
         for (javafx.scene.Node node : toolBar.getItems()) {
-            if (node instanceof Button && ((Button) node).getText().equals("刷新")) {
-                return (Button) node;
+            if (node instanceof Button) {
+                Button button = (Button) node;
+                if ("刷新".equals(button.getText())) {
+                    return button;
+                }
             }
         }
         return null;
     }
 
     public Button getModeButton() {
-        // 现在是第7个元素（索引6）
         for (javafx.scene.Node node : toolBar.getItems()) {
-            if (node instanceof Button && ((Button) node).getText().equals("切换模式")) {
-                return (Button) node;
+            if (node instanceof Button) {
+                Button button = (Button) node;
+                if ("切换模式".equals(button.getText())) {
+                    return button;
+                }
             }
         }
         return null;
+    }
+
+    public ToolBar getToolBar() {
+        return toolBar;
     }
 
 }

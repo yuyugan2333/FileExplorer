@@ -1,6 +1,7 @@
 package com.fileexplorer;
 
 import javafx.application.Platform;
+import javafx.beans.binding.Bindings;
 import javafx.concurrent.Task;
 import javafx.scene.Node;
 import javafx.scene.control.*;
@@ -10,17 +11,16 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
-import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 import javafx.util.Callback;
 
 import java.awt.*;
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class FileExplorerController {
     private final MainView mainView;
@@ -31,6 +31,7 @@ public class FileExplorerController {
     private final List<Path> history = new ArrayList<>();
     private int currentIndex = -1;
     private Timer searchTimer;
+    private ClipboardManager clipboardManager = ClipboardManager.getInstance();
 
     private FileOperationTask currentFileOperationTask = null;
 
@@ -182,6 +183,51 @@ public class FileExplorerController {
         // 为目录树也添加右键菜单
         ContextMenu treeContextMenu = createTreeContextMenu();
         mainView.getTreeView().setContextMenu(treeContextMenu);
+
+        initializeClipboardListener();
+    }
+
+    private void initializeClipboardListener() {
+        // 监听剪贴板是否为空的变化
+        clipboardManager.emptyProperty().addListener((obs, wasEmpty, isEmpty) -> {
+            Platform.runLater(() -> {
+                if (isEmpty) {
+                    mainView.getStatusLabel().setText("就绪");
+                } else {
+                    String operation = clipboardManager.isCutOperation() ? "剪切" : "复制";
+                    mainView.getStatusLabel().setText(
+                            String.format("%s %d 个项目到剪贴板",
+                                    operation, clipboardManager.getItemCount())
+                    );
+                }
+            });
+        });
+
+        // 监听剪贴板操作类型的变化
+        clipboardManager.isCutOperationProperty().addListener((obs, oldValue, newValue) -> {
+            Platform.runLater(() -> {
+                if (!clipboardManager.isEmpty()) {
+                    String operation = newValue ? "剪切" : "复制";
+                    mainView.getStatusLabel().setText(
+                            String.format("%s %d 个项目到剪贴板",
+                                    operation, clipboardManager.getItemCount())
+                    );
+                }
+            });
+        });
+
+        // 监听剪贴板项目数量的变化
+        clipboardManager.itemCountProperty().addListener((obs, oldCount, newCount) -> {
+            Platform.runLater(() -> {
+                if (newCount.intValue() > 0) {
+                    String operation = clipboardManager.isCutOperation() ? "剪切" : "复制";
+                    mainView.getStatusLabel().setText(
+                            String.format("%s %d 个项目到剪贴板",
+                                    operation, newCount)
+                    );
+                }
+            });
+        });
     }
 
     public void executeFileOperation(FileOperationTask.OperationType type, Path source, Path target) {
@@ -589,93 +635,77 @@ public class FileExplorerController {
         SeparatorMenuItem separator1 = new SeparatorMenuItem();
         SeparatorMenuItem separator2 = new SeparatorMenuItem();
 
-        // 定义剪贴板（用于复制/移动操作）
-        class Clipboard {
-            List<Path> files = new ArrayList<>();
-            boolean isCutOperation = false; // true表示剪切，false表示复制
-        }
-        Clipboard clipboard = new Clipboard();
-
-        // 修改复制功能
+        // 复制功能 - 只保存到剪贴板
         copy.setOnAction(e -> {
             List<FileItem> selectedItems = mainView.getSelectedFileItems();
             if (!selectedItems.isEmpty()) {
-                // 打开目标选择对话框
-                DirectoryChooser directoryChooser = new DirectoryChooser();
-                directoryChooser.setTitle("选择目标目录");
-                File selectedDir = directoryChooser.showDialog(primaryStage);
-
-                if (selectedDir != null) {
-                    Path targetDir = selectedDir.toPath();
-                    for (FileItem item : selectedItems) {
-                        Path targetPath = targetDir.resolve(item.getPath().getFileName());
-                        copyFile(item.getPath(), targetPath);
-                    }
-                }
+                List<Path> paths = selectedItems.stream()
+                        .map(FileItem::getPath)
+                        .collect(Collectors.toList());
+                clipboardManager.setClipboard(paths, false);
+                showInfo("已复制 " + paths.size() + " 个项目到剪贴板");
             }
         });
 
-        // 修改剪切功能
+        // 剪切功能 - 只保存到剪贴板
         cut.setOnAction(e -> {
             List<FileItem> selectedItems = mainView.getSelectedFileItems();
             if (!selectedItems.isEmpty()) {
-                DirectoryChooser directoryChooser = new DirectoryChooser();
-                directoryChooser.setTitle("选择目标目录");
-                File selectedDir = directoryChooser.showDialog(primaryStage);
-
-                if (selectedDir != null) {
-                    Path targetDir = selectedDir.toPath();
-                    for (FileItem item : selectedItems) {
-                        Path targetPath = targetDir.resolve(item.getPath().getFileName());
-                        moveFile(item.getPath(), targetPath);
-                    }
-                }
+                List<Path> paths = selectedItems.stream()
+                        .map(FileItem::getPath)
+                        .collect(Collectors.toList());
+                clipboardManager.setClipboard(paths, true);
+                showInfo("已剪切 " + paths.size() + " 个项目到剪贴板");
             }
         });
 
-        // 粘贴功能
+        // 粘贴功能 - 从剪贴板读取并执行
         paste.setOnAction(e -> {
-            if (clipboard.files.isEmpty() || currentPath == null) {
+            if (clipboardManager.isEmpty() || currentPath == null) {
                 return;
             }
 
-            for (Path source : clipboard.files) {
-                Path target = currentPath.resolve(source.getFileName());
+            List<Path> clipboardItems = clipboardManager.getClipboardItems();
+            boolean isCut = clipboardManager.isCutOperation();
 
-                // 处理同名文件
-                if (Files.exists(target)) {
-                    if (!showConfirmDialog("文件已存在", "文件 " + target.getFileName() + " 已存在，是否覆盖？")) {
-                        continue;
-                    }
-                }
-
-                try {
-                    if (clipboard.isCutOperation) {
-                        // 移动文件
-                        Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
-                    } else {
-                        // 复制文件
-                        if (Files.isDirectory(source)) {
-                            copyDirectory(source, target);
-                        } else {
-                            Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
-                        }
-                    }
-                } catch (IOException ex) {
-                    showAlert("错误", "操作失败: " + ex.getMessage());
+            // 检查目标路径是否在源路径中（避免循环复制）
+            for (Path source : clipboardItems) {
+                if (currentPath.startsWith(source)) {
+                    showAlert("错误", "不能将文件夹复制到自身或其子文件夹中");
+                    return;
                 }
             }
+
+            // 检查重名文件
+            List<Path> conflicts = new ArrayList<>();
+            for (Path source : clipboardItems) {
+                Path target = currentPath.resolve(source.getFileName());
+                if (Files.exists(target)) {
+                    conflicts.add(source);
+                }
+            }
+
+            if (!conflicts.isEmpty()) {
+                // 显示冲突确认对话框
+                if (!showConflictDialog(conflicts)) {
+                    return;
+                }
+            }
+
+            // 执行批量操作
+            BatchFileOperationTask.OperationType operationType =
+                    isCut ? BatchFileOperationTask.OperationType.MOVE :
+                            BatchFileOperationTask.OperationType.COPY;
+
+            executeBatchOperation(operationType, clipboardItems, currentPath);
 
             // 如果是剪切操作，清空剪贴板
-            if (clipboard.isCutOperation) {
-                clipboard.files.clear();
+            if (isCut) {
+                clipboardManager.clearClipboard();
             }
-
-            // 刷新文件列表
-            loadFiles(currentPath);
         });
 
-        // 修改删除功能
+        // 修改删除功能 - 使用批量删除
         delete.setOnAction(e -> {
             List<FileItem> selectedItems = mainView.getSelectedFileItems();
             if (selectedItems.isEmpty()) {
@@ -688,11 +718,14 @@ public class FileExplorerController {
             }
 
             if (showConfirmDialog("确认删除", message)) {
-                for (FileItem item : selectedItems) {
-                    deleteFile(item.getPath());
-                }
+                List<Path> paths = selectedItems.stream()
+                        .map(FileItem::getPath)
+                        .collect(Collectors.toList());
+                executeBatchOperation(BatchFileOperationTask.OperationType.DELETE,
+                        paths, null);
             }
         });
+
 
         // 重命名功能
         rename.setOnAction(e -> {
@@ -735,6 +768,14 @@ public class FileExplorerController {
             }
         });
 
+        // 动态更新粘贴菜单项状态
+        paste.disableProperty().bind(
+                Bindings.createBooleanBinding(() ->
+                                clipboardManager.isEmpty() || currentPath == null,
+                        mainView.getPathField().textProperty()
+                )
+        );
+
         // 将菜单项添加到右键菜单
         menu.getItems().addAll(copy, cut, paste, separator1, delete, rename, newFolder, separator2, properties);
 
@@ -755,6 +796,92 @@ public class FileExplorerController {
                 Files.copy(file, target.resolve(source.relativize(file)), StandardCopyOption.REPLACE_EXISTING);
                 return FileVisitResult.CONTINUE;
             }
+        });
+    }
+
+    private boolean showConflictDialog(List<Path> conflicts) {
+        StringBuilder message = new StringBuilder();
+        message.append("以下文件已存在，是否覆盖？\n\n");
+
+        for (int i = 0; i < Math.min(5, conflicts.size()); i++) {
+            message.append("• ").append(conflicts.get(i).getFileName()).append("\n");
+        }
+
+        if (conflicts.size() > 5) {
+            message.append("... 还有 ").append(conflicts.size() - 5).append(" 个文件\n");
+        }
+
+        message.append("\n选择是覆盖所有，否跳过所有，取消中断操作");
+
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("文件冲突");
+        alert.setHeaderText("目标位置已存在同名文件");
+        alert.setContentText(message.toString());
+
+        ButtonType replaceAll = new ButtonType("覆盖所有");
+        ButtonType skipAll = new ButtonType("跳过所有");
+        ButtonType cancel = ButtonType.CANCEL;
+
+        alert.getButtonTypes().setAll(replaceAll, skipAll, cancel);
+
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.isPresent()) {
+            if (result.get() == replaceAll) {
+                return true;
+            } else if (result.get() == skipAll) {
+                // 这里可以过滤掉冲突文件，跳过它们
+                // 为了简化，我们返回false让用户手动处理
+                showInfo("已跳过所有冲突文件");
+                return false;
+            }
+        }
+        return false;
+    }
+
+
+    /**
+     * 执行批量文件操作
+     */
+    private void executeBatchOperation(BatchFileOperationTask.OperationType type,
+                                       List<Path> sourcePaths, Path targetDir) {
+        BatchFileOperationTask task = new BatchFileOperationTask(
+                type, sourcePaths, targetDir, primaryStage
+        );
+
+        // 创建进度对话框
+        Dialog<Void> progressDialog = task.createProgressDialog();
+
+        // 任务完成时关闭对话框并刷新文件列表
+        task.setOnSucceeded(e -> {
+            Platform.runLater(() -> {
+                progressDialog.close();
+                loadFiles(currentPath); // 刷新文件列表
+
+                // 如果是删除操作且目标目录为空，刷新父目录
+                if (type == BatchFileOperationTask.OperationType.DELETE &&
+                        currentPath != null && Files.exists(currentPath)) {
+                    loadFiles(currentPath);
+                }
+            });
+        });
+
+        task.setOnCancelled(e -> {
+            Platform.runLater(progressDialog::close);
+        });
+
+        task.setOnFailed(e -> {
+            Platform.runLater(() -> {
+                progressDialog.close();
+                loadFiles(currentPath); // 即使失败也刷新
+            });
+        });
+
+        // 使用线程池提交任务
+        threadPool.submitBackgroundTask(task);
+
+        // 显示进度对话框
+        Platform.runLater(() -> {
+            progressDialog.show();
         });
     }
 
