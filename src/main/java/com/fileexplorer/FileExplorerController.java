@@ -2,36 +2,37 @@ package com.fileexplorer;
 
 import javafx.application.Platform;
 import javafx.concurrent.Task;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.control.Button;
+import javafx.scene.control.Dialog;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.TextField;
 import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
+import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 import javafx.util.Callback;
-import javafx.scene.Node;
-import javafx.scene.input.MouseEvent;
 
 import java.awt.*;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 public class FileExplorerController {
     private final MainView mainView;
     private final Stage primaryStage;
     private Path currentPath;
-    private final ExecutorService executor = Executors.newFixedThreadPool(4); // 多线程池
+    private final ThreadPoolManager threadPool = ThreadPoolManager.getInstance(); // 使用统一的线程池管理器
     private Task<List<FileItem>> currentLoadingTask = null;
     private final List<Path> history = new ArrayList<>();
     private int currentIndex = -1;
+    private Timer searchTimer;
+
+    private FileOperationTask currentFileOperationTask = null;
 
     public FileExplorerController(MainView mainView, Stage primaryStage) {
         this.mainView = mainView;
@@ -94,8 +95,64 @@ public class FileExplorerController {
             }
         });
 
-        // 搜索按钮/回车事件（假设搜索框回车触发）
-        mainView.getSearchField().setOnAction(e -> handleSearch(mainView.getSearchField().getText()));
+
+        // 搜索按钮/回车事件（修改为实时搜索）
+        TextField searchField = mainView.getSearchField();
+
+        // 监听搜索框文本变化（延迟搜索，避免频繁触发）
+        searchField.textProperty().addListener((observable, oldValue, newValue) -> {
+            // 使用延迟搜索，避免每次按键都立即搜索
+            if (searchTimer != null) {
+                searchTimer.cancel();
+            }
+            searchTimer = new Timer();
+            searchTimer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    Platform.runLater(() -> {
+                        handleSearch(newValue);
+                    });
+                }
+            }, 500); // 延迟500毫秒
+        });
+
+        // 或者保持原有的回车搜索
+        searchField.setOnAction(e -> handleSearch(searchField.getText()));
+
+        // 添加清除搜索按钮
+        Button clearSearchButton = new Button("×");
+        clearSearchButton.setTooltip(new Tooltip("清除搜索"));
+        clearSearchButton.setOnAction(e -> {
+            searchField.clear();
+            // 重新加载当前目录的文件
+            if (currentPath != null) {
+                loadFiles(currentPath);
+            }
+        });
+
+        // 将清除按钮添加到工具栏
+        Node topNode = mainView.getRoot().getTop();
+        if (topNode instanceof ToolBar) {
+            ToolBar toolBar = (ToolBar) topNode;
+            // 找到搜索框的位置
+            int searchIndex = -1;
+            for (int i = 0; i < toolBar.getItems().size(); i++) {
+                javafx.scene.Node node = toolBar.getItems().get(i);
+                if (node == searchField) {
+                    searchIndex = i;
+                    break;
+                }
+            }
+
+            if (searchIndex != -1) {
+                toolBar.getItems().add(searchIndex + 1, clearSearchButton);
+            }
+        }else {
+            // 处理错误情况
+            System.err.println("工具栏未找到或类型不正确");
+            return;
+        }
+
 
         // 刷新按钮
         mainView.getRefreshButton().setOnAction(e -> {
@@ -125,6 +182,47 @@ public class FileExplorerController {
         // 为目录树也添加右键菜单
         ContextMenu treeContextMenu = createTreeContextMenu();
         mainView.getTreeView().setContextMenu(treeContextMenu);
+    }
+
+    public void executeFileOperation(FileOperationTask.OperationType type, Path source, Path target) {
+        // 如果有正在进行的任务，先询问用户
+        if (currentFileOperationTask != null && currentFileOperationTask.isRunning()) {
+            boolean confirm = showConfirmDialog("确认", "当前有文件操作正在进行，是否继续？");
+            if (!confirm) {
+                return;
+            }
+        }
+
+        FileOperationTask task = new FileOperationTask(type, source, target);
+        task.setOwnerStage(primaryStage);
+        currentFileOperationTask = task;
+
+        // 创建进度对话框
+        Dialog<Void> progressDialog = task.createProgressDialog();
+
+        // 任务完成时关闭对话框
+        task.setOnSucceeded(e -> {
+            Platform.runLater(() -> {
+                progressDialog.close();
+                loadFiles(currentPath); // 刷新文件列表
+            });
+        });
+
+        task.setOnCancelled(e -> {
+            Platform.runLater(progressDialog::close);
+        });
+
+        task.setOnFailed(e -> {
+            Platform.runLater(progressDialog::close);
+        });
+
+        // 使用线程池提交任务
+        threadPool.submitFileOperation(task);
+
+        // 显示进度对话框
+        Platform.runLater(() -> {
+            progressDialog.show();
+        });
     }
 
     private void loadDirectoryTree() {
@@ -246,8 +344,8 @@ public class FileExplorerController {
         });
     }
 
+    // 修改 loadFiles 方法，使用线程池
     private void loadFiles(Path dir) {
-        // 取消上一个未完成的任务
         if (currentLoadingTask != null && currentLoadingTask.isRunning()) {
             currentLoadingTask.cancel();
         }
@@ -255,7 +353,6 @@ public class FileExplorerController {
         currentLoadingTask = new Task<>() {
             @Override
             protected List<FileItem> call() throws Exception {
-                // 检查是否被取消
                 if (isCancelled()) {
                     return new ArrayList<>();
                 }
@@ -263,7 +360,6 @@ public class FileExplorerController {
                 List<FileItem> items = new ArrayList<>();
                 try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
                     for (Path entry : stream) {
-                        // 再次检查是否被取消
                         if (isCancelled()) {
                             return items;
                         }
@@ -276,7 +372,6 @@ public class FileExplorerController {
 
         currentLoadingTask.setOnSucceeded(e -> {
             Platform.runLater(() -> {
-                // 只有当任务成功完成时才更新UI
                 mainView.getTableView().getItems().setAll(currentLoadingTask.getValue());
                 if (mainView.getGridView().isVisible()) {
                     loadGridView(dir);
@@ -290,12 +385,8 @@ public class FileExplorerController {
             });
         });
 
-        currentLoadingTask.setOnCancelled(e -> {
-            // 任务被取消，不更新UI
-            System.out.println("文件加载任务被取消");
-        });
-
-        executor.submit(currentLoadingTask);
+        // 使用线程池提交任务
+        threadPool.submitBackgroundTask(currentLoadingTask);
     }
 
     private void loadGridView(Path dir) {
@@ -366,13 +457,53 @@ public class FileExplorerController {
         }
     }
 
+    // 修改原有的 handleSearch 方法
     private void handleSearch(String pattern) {
         if (currentPath == null) return;
 
-        Task<List<FileItem>> searchTask = new SearchTask(currentPath, pattern);
-        searchTask.setOnSucceeded(e -> Platform.runLater(() -> mainView.getTableView().getItems().setAll(searchTask.getValue())));
+        // 创建搜索任务
+        SearchTask searchTask = new SearchTask(currentPath, pattern);
+        searchTask.setOnSucceeded(e -> Platform.runLater(() -> {
+            mainView.getTableView().getItems().setAll(searchTask.getValue());
+            if (mainView.getGridView().isVisible()) {
+                // 如果当前是网格视图，也需要更新
+                updateGridViewWithSearchResults(searchTask.getValue());
+            }
+        }));
         searchTask.setOnFailed(e -> showAlert("错误", "搜索失败: " + searchTask.getException().getMessage()));
-        executor.submit(searchTask);
+
+        // 使用线程池管理器提交搜索任务
+        threadPool.submitBackgroundTask(searchTask);
+    }
+
+    // 新增方法：使用搜索结果更新网格视图
+    private void updateGridViewWithSearchResults(List<FileItem> searchResults) {
+        if (!mainView.getGridView().isVisible()) {
+            return;
+        }
+
+        mainView.getGridView().getChildren().clear();
+        mainView.getSelectedItemsInGrid().clear();
+
+        int col = 0, row = 0;
+        for (FileItem item : searchResults) {
+            Button iconButton = new Button(item.getName());
+            iconButton.setUserData(item);
+
+            // 设置按钮样式
+            if (item.isDirectory()) {
+                iconButton.setStyle("-fx-background-color: #e3f2fd; -fx-border-color: #bbdefb;");
+            }
+
+            // 添加点击事件处理
+            iconButton.setOnMouseClicked(event -> handleGridItemClick(event, iconButton, item));
+
+            mainView.getGridView().add(iconButton, col++, row);
+            if (col > 4) { // 每行5个
+                col = 0;
+                row++;
+            }
+        }
     }
 
     private void openFile(Path path) {
@@ -388,52 +519,21 @@ public class FileExplorerController {
         dialog.showAndWait();
     }
 
-    // 文件操作方法
     public void copyFile(Path source, Path target) {
-        try {
-            if (Files.isDirectory(source)) {
-                copyDirectory(source, target);
-            } else {
-                Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
-            }
-            loadFiles(currentPath); // 刷新
-        } catch (IOException e) {
-            showAlert("错误", "复制失败: " + e.getMessage());
-        }
+        executeFileOperation(FileOperationTask.OperationType.COPY, source, target);
     }
 
     public void moveFile(Path source, Path target) {
-        try {
-            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
-            loadFiles(currentPath);
-        } catch (IOException e) {
-            showAlert("错误", "移动失败: " + e.getMessage());
-        }
+        executeFileOperation(FileOperationTask.OperationType.MOVE, source, target);
     }
 
     public void deleteFile(Path path) {
-        try {
-            if (Files.isDirectory(path)) {
-                Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
-                    @Override
-                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                        Files.delete(file);
-                        return FileVisitResult.CONTINUE;
-                    }
+        executeFileOperation(FileOperationTask.OperationType.DELETE, path, null);
+    }
 
-                    @Override
-                    public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-                        Files.delete(dir);
-                        return FileVisitResult.CONTINUE;
-                    }
-                });
-            } else {
-                Files.delete(path);
-            }
-            loadFiles(currentPath);
-        } catch (IOException e) {
-            showAlert("错误", "删除失败: " + e.getMessage());
-        }
+    // 添加解压方法
+    public void extractFile(Path source, Path target) {
+        executeFileOperation(FileOperationTask.OperationType.EXTRACT, source, target);
     }
 
     public void renameFile(Path path, String newName) {
@@ -496,25 +596,40 @@ public class FileExplorerController {
         }
         Clipboard clipboard = new Clipboard();
 
-        // 复制功能
+        // 修改复制功能
         copy.setOnAction(e -> {
             List<FileItem> selectedItems = mainView.getSelectedFileItems();
             if (!selectedItems.isEmpty()) {
-                clipboard.files.clear();
-                selectedItems.forEach(item -> clipboard.files.add(item.getPath()));
-                clipboard.isCutOperation = false;
-                showInfo("已复制 " + selectedItems.size() + " 个项目");
+                // 打开目标选择对话框
+                DirectoryChooser directoryChooser = new DirectoryChooser();
+                directoryChooser.setTitle("选择目标目录");
+                File selectedDir = directoryChooser.showDialog(primaryStage);
+
+                if (selectedDir != null) {
+                    Path targetDir = selectedDir.toPath();
+                    for (FileItem item : selectedItems) {
+                        Path targetPath = targetDir.resolve(item.getPath().getFileName());
+                        copyFile(item.getPath(), targetPath);
+                    }
+                }
             }
         });
 
-        // 剪切功能
+        // 修改剪切功能
         cut.setOnAction(e -> {
             List<FileItem> selectedItems = mainView.getSelectedFileItems();
             if (!selectedItems.isEmpty()) {
-                clipboard.files.clear();
-                selectedItems.forEach(item -> clipboard.files.add(item.getPath()));
-                clipboard.isCutOperation = true;
-                showInfo("已剪切 " + selectedItems.size() + " 个项目");
+                DirectoryChooser directoryChooser = new DirectoryChooser();
+                directoryChooser.setTitle("选择目标目录");
+                File selectedDir = directoryChooser.showDialog(primaryStage);
+
+                if (selectedDir != null) {
+                    Path targetDir = selectedDir.toPath();
+                    for (FileItem item : selectedItems) {
+                        Path targetPath = targetDir.resolve(item.getPath().getFileName());
+                        moveFile(item.getPath(), targetPath);
+                    }
+                }
             }
         });
 
@@ -560,14 +675,13 @@ public class FileExplorerController {
             loadFiles(currentPath);
         });
 
-        // 删除功能
+        // 修改删除功能
         delete.setOnAction(e -> {
             List<FileItem> selectedItems = mainView.getSelectedFileItems();
             if (selectedItems.isEmpty()) {
                 return;
             }
 
-            // 确认对话框
             String message = "确定要删除选中的 " + selectedItems.size() + " 个项目吗？";
             if (selectedItems.size() == 1) {
                 message = "确定要删除 \"" + selectedItems.get(0).getName() + "\" 吗？";
@@ -577,7 +691,6 @@ public class FileExplorerController {
                 for (FileItem item : selectedItems) {
                     deleteFile(item.getPath());
                 }
-                showInfo("已删除 " + selectedItems.size() + " 个项目");
             }
         });
 
@@ -681,9 +794,27 @@ public class FileExplorerController {
         });
     }
 
-    // 关闭时 shutdown executor
+    /**
+     * 添加程序退出时的清理代码
+     */
     public void shutdown() {
-        executor.shutdown();
+        // 取消搜索计时器
+        if (searchTimer != null) {
+            searchTimer.cancel();
+            searchTimer = null;
+        }
+
+        // 取消正在进行的任务
+        if (currentLoadingTask != null && currentLoadingTask.isRunning()) {
+            currentLoadingTask.cancel();
+        }
+
+        if (currentFileOperationTask != null && currentFileOperationTask.isRunning()) {
+            currentFileOperationTask.cancel(true);
+        }
+
+        // 关闭线程池
+        threadPool.shutdown();
     }
 
     // 添加导航相关方法
@@ -786,29 +917,3 @@ public class FileExplorerController {
     }
 }
 
-// SearchTask **暂时**
-class SearchTask extends Task<List<FileItem>> {
-    private final Path startDir;
-    private final String pattern;
-
-    public SearchTask(Path startDir, String pattern) {
-        this.startDir = startDir;
-        this.pattern = pattern;
-    }
-
-    @Override
-    protected List<FileItem> call() throws Exception {
-        List<FileItem> results = new ArrayList<>();
-        Pattern regex = Pattern.compile(globToRegex(pattern));
-        try (Stream<Path> stream = Files.walk(startDir)) {
-            stream.filter(path -> regex.matcher(path.getFileName().toString()).matches())
-                    .map(FileItem::new)
-                    .forEach(results::add);
-        }
-        return results;
-    }
-
-    private String globToRegex(String glob) {
-        return glob.replace("*", ".*").replace("?", ".");
-    }
-}

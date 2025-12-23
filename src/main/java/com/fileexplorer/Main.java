@@ -5,20 +5,26 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 
 public class Main extends Application {
+    private FileExplorerController controller;
+
     @Override
     public void start(Stage primaryStage) {
-        // 这里初始化UI
         MainView mainView = new MainView();
-        FileExplorerController controller = new FileExplorerController(mainView, primaryStage);
+        controller = new FileExplorerController(mainView, primaryStage);
 
-        // 创建场景，将MainView的根布局设置为场景的根节点
-        Scene scene = new Scene(mainView.getRoot(), 1200, 800);  // 设置窗口大小为1200x800
-
-        // 添加 CSS 样式表
+        Scene scene = new Scene(mainView.getRoot(), 1200, 800);
         scene.getStylesheets().add(getClass().getResource("/com/fileexplorer/styles.css").toExternalForm());
 
-        primaryStage.setScene(scene);  // 这一步必不可少！
+        primaryStage.setScene(scene);
         primaryStage.setTitle("文件资源管理器");
+
+        // 添加窗口关闭事件处理
+        primaryStage.setOnCloseRequest(event -> {
+            if (controller != null) {
+                controller.shutdown();
+            }
+        });
+
         primaryStage.show();
     }
 

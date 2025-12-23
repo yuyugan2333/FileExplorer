@@ -1,3 +1,56 @@
 .selected {
     -fx-background-color: lightblue;
 }
+/* 进度条样式 */
+.progress-bar {
+    -fx-accent: #4CAF50;
+}
+
+/* 网格视图选中样式 */
+.button.selected {
+    -fx-background-color: #2196F3;
+    -fx-text-fill: white;
+}
+
+/* 工具栏按钮样式 */
+.tool-bar .button {
+    -fx-background-radius: 3px;
+    -fx-padding: 5px 10px;
+}
+
+.tool-bar .button:hover {
+    -fx-background-color: #e0e0e0;
+}
+
+/* 表格样式 */
+.table-view {
+    -fx-table-cell-border-color: transparent;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: #2196F3;
+    -fx-text-fill: white;
+}
+
+.table-row-cell:filled:hover {
+    -fx-background-color: #f0f0f0;
+}
+/* 搜索高亮样式 */
+.search-highlight {
+    -fx-background-color: #fff9c4;
+    -fx-border-color: #ffeb3b;
+    -fx-border-width: 1px;
+}
+
+/* 清除搜索按钮 */
+.button.clear-search {
+    -fx-background-color: transparent;
+    -fx-text-fill: #666;
+    -fx-font-size: 12px;
+    -fx-padding: 2px 5px;
+}
+
+.button.clear-search:hover {
+    -fx-background-color: #f0f0f0;
+    -fx-text-fill: #333;
+}
