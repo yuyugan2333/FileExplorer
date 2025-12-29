@@ -8,6 +8,8 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 
+import java.io.IOException;
+import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -24,7 +26,7 @@ public class MainView {
     private TreeView<Path> treeView;
     private TableView<FileItem> tableView;
     private FlowPane gridView;  // 修改为 FlowPane 以支持自适应列数
-    private boolean isGridMode = false;
+    public boolean isGridMode = false;
     private Button backButton;
     private Button forwardButton;
     private Button upButton;
@@ -280,7 +282,19 @@ public class MainView {
                 if (empty || size == null) {
                     setText(null);
                 } else {
-                    setText(FileUtils.formatSize(size));
+                    FileItem item = getTableView().getItems().get(getIndex());
+                    if (item.isDrive()) {  // 检查是否是驱动器
+                        try {
+                            FileStore store = Files.getFileStore(item.getPath());
+                            long available = store.getUsableSpace();
+                            long total = store.getTotalSpace();
+                            setText(FileUtils.formatSize(available) + " / " + FileUtils.formatSize(total));
+                        } catch (IOException e) {
+                            setText(FileUtils.formatSize(size));
+                        }
+                    } else {
+                        setText(FileUtils.formatSize(size));
+                    }
                 }
             }
         });

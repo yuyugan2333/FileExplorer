@@ -9,6 +9,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.stage.Stage;
@@ -39,6 +40,7 @@ public class FileExplorerController {
         this.primaryStage = primaryStage;
         mainView.getRoot().getStylesheets().add(getClass().getResource("/com/fileexplorer/windows-style.css").toExternalForm());
         initialize();
+        new KeyboardHandler(this, mainView);  // 初始化快捷键处理类
     }
 
     private void initialize() {
@@ -118,9 +120,22 @@ public class FileExplorerController {
                         }
                     }
                 }
+            } else if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 1) {
+                // 点击空白处取消选择
+                if (mainView.getTableView().getSelectionModel().getSelectedItem() == null) {
+                    mainView.getTableView().getSelectionModel().clearSelection();
+                }
             }
         });
 
+        mainView.getGridView().setOnMouseClicked(event -> {
+            if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 1) {
+                // 点击空白处取消选择
+                if (event.getTarget() == mainView.getGridView()) {
+                    deselectAllInGrid();
+                }
+            }
+        });
 
         // 搜索按钮/回车事件（修改为实时搜索）
         TextField searchField = mainView.getSearchField();
@@ -218,6 +233,15 @@ public class FileExplorerController {
         initializeClipboardListener();
     }
 
+    private void deselectAllInGrid() {
+        for (Node node : mainView.getGridView().getChildren()) {
+            if (node instanceof Button) {
+                node.getStyleClass().remove("selected");
+            }
+        }
+        mainView.getSelectedItemsInGrid().clear();
+    }
+
     /**
      * 加载首页（显示所有驱动器和特殊文件夹）
      */
@@ -257,7 +281,6 @@ public class FileExplorerController {
             protected List<FileItem> call() throws Exception {
                 List<FileItem> items = new ArrayList<>();
 
-                // 不再添加"此电脑"虚拟项
                 // 直接获取所有磁盘驱动器
                 FileSystem fs = FileSystems.getDefault();
                 for (Path root : fs.getRootDirectories()) {
@@ -301,6 +324,16 @@ public class FileExplorerController {
                                     } catch (IOException e) {
                                         return -1;
                                     }
+                                }
+
+                                @Override
+                                public boolean isDirectory() {
+                                    return true;
+                                }
+
+                                @Override
+                                public boolean isDrive() {
+                                    return true;  // 添加标识是驱动器
                                 }
                             };
                             items.add(driveItem);
@@ -396,17 +429,7 @@ public class FileExplorerController {
             Button button = mainView.addGridItem(item);  // 修改调用方式
 
             // 为按钮添加点击事件
-            button.setOnMouseClicked(event -> {
-                if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2) {
-                    if (item.getPath().toString().equals("此电脑")) {
-                        // 已经在首页，不做任何操作
-                    } else if (Files.isDirectory(item.getPath())) {
-                        navigateTo(item.getPath());
-                    } else {
-                        openFile(item.getPath());
-                    }
-                }
-            });
+            button.setOnMouseClicked(event -> handleGridItemClick(event, button, item));
 
             mainView.getGridView().getChildren().add(button);  // 添加到 FlowPane
         }
@@ -796,8 +819,40 @@ public class FileExplorerController {
     }
 
     private void showFileDetails(Path path) {
-        DetailsDialog dialog = new DetailsDialog(path);
-        dialog.showAndWait();
+        if (isRootDrive(path)) {
+            showDriveDetails(path);
+        } else {
+            DetailsDialog dialog = new DetailsDialog(path);
+            dialog.showAndWait();
+        }
+    }
+
+    private boolean isRootDrive(Path path) {
+        try {
+            return path.getParent() == null && Files.getFileStore(path) != null;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    private void showDriveDetails(Path path) {
+        try {
+            FileStore store = Files.getFileStore(path);
+            long total = store.getTotalSpace();
+            long used = total - store.getUsableSpace();
+            long free = store.getUsableSpace();
+
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("驱动器属性");
+            alert.setHeaderText(path.toString() + " (" + store.name() + ")");
+            alert.setContentText("类型: " + store.type() + "\n" +
+                    "总容量: " + FileUtils.formatSize(total) + "\n" +
+                    "已用: " + FileUtils.formatSize(used) + "\n" +
+                    "可用: " + FileUtils.formatSize(free));
+            alert.showAndWait();
+        } catch (IOException e) {
+            showAlert("错误", "无法获取驱动器信息: " + e.getMessage());
+        }
     }
 
     public void copyFile(Path source, Path target) {
@@ -1316,5 +1371,206 @@ public class FileExplorerController {
         }
 
         return null;
+    }
+
+    public void copySelected() {
+        List<FileItem> selectedItems = mainView.getSelectedFileItems();
+        if (!selectedItems.isEmpty()) {
+            List<Path> paths = selectedItems.stream()
+                    .map(FileItem::getPath)
+                    .collect(Collectors.toList());
+            clipboardManager.setClipboard(paths, false);
+            showInfo("已复制 " + paths.size() + " 个项目到剪贴板");
+        }
+    }
+
+    public void cutSelected() {
+        List<FileItem> selectedItems = mainView.getSelectedFileItems();
+        if (!selectedItems.isEmpty()) {
+            List<Path> paths = selectedItems.stream()
+                    .map(FileItem::getPath)
+                    .collect(Collectors.toList());
+            clipboardManager.setClipboard(paths, true);
+            showInfo("已剪切 " + paths.size() + " 个项目到剪贴板");
+        }
+    }
+
+    public void paste() {
+        if (clipboardManager.isEmpty() || currentPath == null) {
+            return;
+        }
+
+        List<Path> clipboardItems = clipboardManager.getClipboardItems();
+        boolean isCut = clipboardManager.isCutOperation();
+
+        // 检查目标路径是否在源路径中（避免循环复制）
+        for (Path source : clipboardItems) {
+            if (currentPath.startsWith(source)) {
+                showAlert("错误", "不能将文件夹复制到自身或其子文件夹中");
+                return;
+            }
+        }
+
+        // 检查重名文件
+        List<Path> conflicts = new ArrayList<>();
+        for (Path source : clipboardItems) {
+            Path target = currentPath.resolve(source.getFileName());
+            if (Files.exists(target)) {
+                conflicts.add(source);
+            }
+        }
+
+        if (!conflicts.isEmpty()) {
+            // 显示冲突确认对话框
+            if (!showConflictDialog(conflicts)) {
+                return;
+            }
+        }
+
+        // 执行批量操作
+        BatchFileOperationTask.OperationType operationType =
+                isCut ? BatchFileOperationTask.OperationType.MOVE :
+                        BatchFileOperationTask.OperationType.COPY;
+
+        executeBatchOperation(operationType, clipboardItems, currentPath);
+
+        // 如果是剪切操作，清空剪贴板
+        if (isCut) {
+            clipboardManager.clearClipboard();
+        }
+    }
+
+    public void deleteSelected() {
+        List<FileItem> selectedItems = mainView.getSelectedFileItems();
+        if (selectedItems.isEmpty()) {
+            return;
+        }
+
+        String message = "确定要删除选中的 " + selectedItems.size() + " 个项目吗？";
+        if (selectedItems.size() == 1) {
+            message = "确定要删除 \"" + selectedItems.get(0).getName() + "\" 吗？";
+        }
+
+        if (showConfirmDialog("确认删除", message)) {
+            List<Path> paths = selectedItems.stream()
+                    .map(FileItem::getPath)
+                    .collect(Collectors.toList());
+            executeBatchOperation(BatchFileOperationTask.OperationType.DELETE,
+                    paths, null);
+        }
+    }
+
+    public void renameSelected() {
+        FileItem selected = mainView.getSelectedFileItem();
+        if (selected == null) {
+            return;
+        }
+
+        TextInputDialog dialog = new TextInputDialog(selected.getName());
+        dialog.setTitle("重命名");
+        dialog.setHeaderText("重命名文件");
+        dialog.setContentText("请输入新名称:");
+
+        dialog.showAndWait().ifPresent(newName -> {
+            if (!newName.trim().isEmpty() && !newName.equals(selected.getName())) {
+                renameFile(selected.getPath(), newName.trim());
+            }
+        });
+    }
+
+    public void createNewFolder() {
+        TextInputDialog dialog = new TextInputDialog("新建文件夹");
+        dialog.setTitle("新建文件夹");
+        dialog.setHeaderText("创建新文件夹");
+        dialog.setContentText("请输入文件夹名称:");
+
+        dialog.showAndWait().ifPresent(folderName -> {
+            if (!folderName.trim().isEmpty()) {
+                createFolder(folderName.trim());
+            }
+        });
+    }
+
+    public void showProperties() {
+        FileItem selected = mainView.getSelectedFileItem();
+        if (selected != null) {
+            showFileDetails(selected.getPath());
+        }
+    }
+
+    public void selectAll() {
+        if (mainView.isGridMode) {
+            for (Node node : mainView.getGridView().getChildren()) {
+                if (node instanceof Button) {
+                    Button button = (Button) node;
+                    FileItem item = (FileItem) button.getUserData();
+                    mainView.getSelectedItemsInGrid().add(item);
+                    button.getStyleClass().add("selected");
+                }
+            }
+        } else {
+            mainView.getTableView().getSelectionModel().selectAll();
+        }
+    }
+
+    public void refresh() {
+        if (currentPath != null) {
+            loadFiles(currentPath);
+        } else {
+            loadHomePage();
+        }
+    }
+}
+
+class KeyboardHandler {
+    private final FileExplorerController controller;
+    private final MainView mainView;
+
+    public KeyboardHandler(FileExplorerController controller, MainView mainView) {
+        this.controller = controller;
+        this.mainView = mainView;
+        mainView.getRoot().addEventFilter(KeyEvent.KEY_PRESSED, this::handleKeyPressed);
+    }
+
+    private void handleKeyPressed(KeyEvent event) {
+        if (event.isControlDown()) {
+            switch (event.getCode()) {
+                case C: // Ctrl + C 复制
+                    controller.copySelected();
+                    event.consume();
+                    break;
+                case X: // Ctrl + X 剪切
+                    controller.cutSelected();
+                    event.consume();
+                    break;
+                case V: // Ctrl + V 粘贴
+                    controller.paste();
+                    event.consume();
+                    break;
+                case A: // Ctrl + A 全选
+                    controller.selectAll();
+                    event.consume();
+                    break;
+                default:
+                    break;
+            }
+        } else {
+            switch (event.getCode()) {
+                case DELETE: // Delete 删除
+                    controller.deleteSelected();
+                    event.consume();
+                    break;
+                case F2: // F2 重命名
+                    controller.renameSelected();
+                    event.consume();
+                    break;
+                case F5: // F5 刷新
+                    controller.refresh();
+                    event.consume();
+                    break;
+                default:
+                    break;
+            }
+        }
     }
 }

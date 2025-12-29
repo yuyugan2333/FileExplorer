@@ -91,6 +91,10 @@ public class FileItem {
     }
 
     // Getters for properties (用于JavaFX绑定)
+    public boolean isDrive() {
+        return false; // 默认不是驱动器，在首页创建时覆盖
+    }
+
     public StringProperty nameProperty() {
         return name;
     }
