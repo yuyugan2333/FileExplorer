@@ -500,3 +500,21 @@
     -fx-background-color: #0078D4;
     -fx-background-radius: 5px;
 }
+
+.grid-button {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+}
+
+.grid-button:hover {
+    -fx-background-color: #f0f0f0;
+    -fx-border-color: #d0d0d0;
+}
+
+.grid-button.selected {
+    -fx-background-color: #e0f0ff;
+    -fx-border-color: #4da6ff;
+    -fx-border-width: 2px;
+}

@@ -60,7 +60,7 @@ public class MainView {
 
         // 设置布局
         root.setTop(toolBar);
-        root.setLeft(createSplitPane());
+        root.setLeft(createTreeContainer());  // 修改这里
         root.setBottom(statusBar);
 
         // 初始显示表格视图
@@ -139,46 +139,20 @@ public class MainView {
         return statusLabel;
     }
 
-    private SplitPane createSplitPane() {
-        SplitPane splitPane = new SplitPane();
-        splitPane.setDividerPositions(0.2);
-
-        // 左侧：目录树
-        VBox treeBox = new VBox();
-        treeBox.setPadding(new Insets(8));
-
-        Label treeLabel = new Label("导航");
-        treeLabel.setStyle("-fx-font-weight: bold; -fx-padding: 0 0 8px 0;");
-
+    private ScrollPane createTreeContainer() {
+        // 创建目录树的容器
         ScrollPane treeScroll = new ScrollPane(treeView);
         treeScroll.setFitToWidth(true);
-        treeScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        treeScroll.setFitToHeight(true);  // 添加这行，确保高度适应
+        treeScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         treeScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         treeScroll.setStyle("-fx-background: white; -fx-border-color: transparent;");
 
-        treeBox.getChildren().addAll(treeLabel, treeScroll);
-        VBox.setVgrow(treeScroll, Priority.ALWAYS);
+        // 设置最小宽度，确保不会被压缩
+        treeScroll.setMinWidth(250);
+        treeScroll.setPrefWidth(300);
 
-        // 右侧：文件视图区域
-        VBox viewBox = new VBox();
-        viewBox.setPadding(new Insets(8));
-
-        // 创建标签页容器
-        TabPane tabPane = new TabPane();
-
-        // 主标签页
-        Tab mainTab = new Tab("主视图");
-        mainTab.setClosable(false);
-
-        // 这里可以添加更多标签页...
-
-        tabPane.getTabs().add(mainTab);
-
-        viewBox.getChildren().add(tabPane);
-        VBox.setVgrow(tabPane, Priority.ALWAYS);
-
-        splitPane.getItems().addAll(treeBox, viewBox);
-        return splitPane;
+        return treeScroll;
     }
 
     private void createTreeView() {
@@ -344,7 +318,7 @@ public class MainView {
         selectedItemsInGrid.clear();
     }
 
-    public void addGridItem(FileItem item, int col, int row) {
+    public Button addGridItem(FileItem item, int col, int row) {
         Button button = new Button();
         button.getStyleClass().add("grid-button");
 
@@ -372,18 +346,8 @@ public class MainView {
         button.setGraphic(content);
         button.setUserData(item);
 
-        // 添加选中状态监听
-        button.selectedProperty().addListener((obs, oldVal, newVal) -> {
-            if (newVal) {
-                selectedItemsInGrid.add(item);
-                button.getStyleClass().add("selected");
-            } else {
-                selectedItemsInGrid.remove(item);
-                button.getStyleClass().remove("selected");
-            }
-        });
-
         gridView.add(button, col, row);
+        return button;  // 返回按钮引用
     }
 
     public List<FileItem> getSelectedFileItems() {
@@ -475,7 +439,8 @@ public class MainView {
         for (javafx.scene.Node node : toolBar.getItems()) {
             if (node instanceof Button) {
                 Button button = (Button) node;
-                if ("切换模式".equals(button.getText())) {
+                Tooltip tooltip = button.getTooltip();
+                if (tooltip != null && "切换列表/网格视图".equals(tooltip.getText())) {
                     return button;
                 }
             }

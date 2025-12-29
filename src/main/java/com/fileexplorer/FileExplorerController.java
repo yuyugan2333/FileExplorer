@@ -449,7 +449,11 @@ public class FileExplorerController {
                 }
 
                 FileItem item = new FileItem(entry);
-                mainView.addGridItem(item, col, row);
+                Button button = mainView.addGridItem(item, col, row);
+
+                // 为按钮添加点击事件
+                button.setOnMouseClicked(event -> handleGridItemClick(event, button, item));
+
                 col++;
             }
         } catch (IOException e) {
@@ -468,30 +472,30 @@ public class FileExplorerController {
                 }
             } else {
                 // 单击：处理选中
-                Set<FileItem> selected = mainView.getSelectedItemsInGrid();
+                Set<FileItem> selected = mainView.getSelectedItemsInGrid();  // 修改这里
 
                 if (event.isControlDown()) {
                     // Ctrl + 点击：切换选中状态
                     if (selected.contains(item)) {
                         selected.remove(item);
-                        button.setSelected(false);
+                        button.getStyleClass().remove("selected");  // 通过 CSS 类控制选中状态
                     } else {
                         selected.add(item);
-                        button.setSelected(true);
+                        button.getStyleClass().add("selected");
                     }
                 } else if (event.isShiftDown()) {
-                    // Shift + 点击：范围选择（需要实现）
-                    // 暂时不处理
+                    // Shift + 点击：范围选择
+                    // 这里可以添加范围选择逻辑
                 } else {
                     // 无修饰键：清空其他选中，只选中当前
                     for (Node node : mainView.getGridView().getChildren()) {
                         if (node instanceof Button) {
-                            ((Button) node).setSelected(false);
+                            node.getStyleClass().remove("selected");
                         }
                     }
                     selected.clear();
                     selected.add(item);
-                    button.setSelected(true);
+                    button.getStyleClass().add("selected");
                 }
             }
         }
