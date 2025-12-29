@@ -392,16 +392,8 @@ public class FileExplorerController {
     private void loadGridViewForHomePage(List<FileItem> items) {
         mainView.clearGridView();
 
-        int col = 0, row = 0;
-        int maxCols = 6;
-
         for (FileItem item : items) {
-            if (col >= maxCols) {
-                col = 0;
-                row++;
-            }
-
-            Button button = mainView.addGridItem(item, col, row);
+            Button button = mainView.addGridItem(item);  // 修改调用方式
 
             // 为按钮添加点击事件
             button.setOnMouseClicked(event -> {
@@ -416,7 +408,7 @@ public class FileExplorerController {
                 }
             });
 
-            col++;
+            mainView.getGridView().getChildren().add(button);  // 添加到 FlowPane
         }
     }
 
@@ -697,23 +689,15 @@ public class FileExplorerController {
     private void loadGridView(Path dir) {
         mainView.clearGridView();  // 清空网格视图
 
-        int col = 0, row = 0;
-        int maxCols = 6;  // 每行6个项目
-
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
             for (Path entry : stream) {
-                if (col >= maxCols) {
-                    col = 0;
-                    row++;
-                }
-
                 FileItem item = new FileItem(entry);
-                Button button = mainView.addGridItem(item, col, row);
+                Button button = mainView.addGridItem(item);  // 修改调用方式
 
                 // 为按钮添加点击事件
                 button.setOnMouseClicked(event -> handleGridItemClick(event, button, item));
 
-                col++;
+                mainView.getGridView().getChildren().add(button);  // 添加到 FlowPane
             }
         } catch (IOException e) {
             showAlert("错误", "加载网格视图失败: " + e.getMessage());
@@ -788,24 +772,18 @@ public class FileExplorerController {
         mainView.getGridView().getChildren().clear();
         mainView.getSelectedItemsInGrid().clear();
 
-        int col = 0, row = 0;
         for (FileItem item : searchResults) {
-            Button iconButton = new Button(item.getName());
-            iconButton.setUserData(item);
+            Button button = mainView.addGridItem(item);  // 修改调用方式
 
             // 设置按钮样式
             if (item.isDirectory()) {
-                iconButton.setStyle("-fx-background-color: #e3f2fd; -fx-border-color: #bbdefb;");
+                button.setStyle("-fx-background-color: #e3f2fd; -fx-border-color: #bbdefb;");
             }
 
             // 添加点击事件处理
-            iconButton.setOnMouseClicked(event -> handleGridItemClick(event, iconButton, item));
+            button.setOnMouseClicked(event -> handleGridItemClick(event, button, item));
 
-            mainView.getGridView().add(iconButton, col++, row);
-            if (col > 4) { // 每行5个
-                col = 0;
-                row++;
-            }
+            mainView.getGridView().getChildren().add(button);  // 添加到 FlowPane
         }
     }
 
@@ -1340,4 +1318,3 @@ public class FileExplorerController {
         return null;
     }
 }
-

@@ -2,7 +2,6 @@ package com.fileexplorer;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.geometry.VPos;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.Image;
@@ -24,7 +23,7 @@ public class MainView {
     private ToolBar toolBar;
     private TreeView<Path> treeView;
     private TableView<FileItem> tableView;
-    private GridPane gridView;
+    private FlowPane gridView;  // 修改为 FlowPane 以支持自适应列数
     private boolean isGridMode = false;
     private Button backButton;
     private Button forwardButton;
@@ -71,10 +70,11 @@ public class MainView {
         tableScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         tableScroll.getStyleClass().add("table-scroll-pane");
 
-        // 包装网格视图
-        gridScroll = new ScrollPane(gridView);
-        gridScroll.setFitToWidth(true);
-        gridScroll.setFitToHeight(true);
+        // 修改：网格视图的ScrollPane设置
+        gridScroll = new ScrollPane();
+        gridScroll.setContent(gridView);
+        gridScroll.setFitToWidth(true);  // 改为true，让 FlowPane 宽度匹配 ScrollPane，支持自适应列数
+        gridScroll.setFitToHeight(false); // 改为false，允许垂直滚动
         gridScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         gridScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         gridScroll.getStyleClass().add("grid-scroll-pane");
@@ -292,31 +292,11 @@ public class MainView {
     }
 
     private void createGridView() {
-        gridView = new GridPane();
+        gridView = new FlowPane();  // 修改为 FlowPane 支持自适应列数
         gridView.getStyleClass().add("grid-pane");
         gridView.setPadding(new Insets(10));
         gridView.setHgap(10);
         gridView.setVgap(10);
-        gridView.setVisible(false);
-
-        // 设置网格对齐
-        for (int i = 0; i < 6; i++) {
-            ColumnConstraints col = new ColumnConstraints();
-            col.setMinWidth(100);
-            col.setPrefWidth(100);
-            col.setMaxWidth(100);
-            col.setHalignment(javafx.geometry.HPos.CENTER);
-            gridView.getColumnConstraints().add(col);
-        }
-
-        for (int i = 0; i < 20; i++) {
-            RowConstraints row = new RowConstraints();
-            row.setMinHeight(100);
-            row.setPrefHeight(100);
-            row.setMaxHeight(100);
-            row.setValignment(VPos.TOP);
-            gridView.getRowConstraints().add(row);
-        }
     }
 
     // 切换视图模式（列表 <-> 网格）
@@ -324,14 +304,12 @@ public class MainView {
         isGridMode = !isGridMode;
         if (isGridMode) {
             selectedItemsInGrid.clear();
-            root.setCenter(gridView);
-            tableView.setVisible(false);
-            gridView.setVisible(true);
+            tableScroll.setVisible(false);  // 修改为切换 ScrollPane 的可见性，而不是直接设置 center
+            gridScroll.setVisible(true);
             modeButton.setText("列表");
         } else {
-            root.setCenter(tableView);
-            gridView.setVisible(false);
-            tableView.setVisible(true);
+            tableScroll.setVisible(true);
+            gridScroll.setVisible(false);
             modeButton.setText("网格");
         }
     }
@@ -341,9 +319,10 @@ public class MainView {
         selectedItemsInGrid.clear();
     }
 
-    public Button addGridItem(FileItem item, int col, int row) {
+    public Button addGridItem(FileItem item) {  // 移除 col 和 row 参数
         Button button = new Button();
         button.getStyleClass().add("grid-button");
+        button.setPrefWidth(100);  // 设置固定宽度以支持自适应列数
 
         // 设置按钮内容
         VBox content = new VBox();
@@ -369,8 +348,7 @@ public class MainView {
         button.setGraphic(content);
         button.setUserData(item);
 
-        gridView.add(button, col, row);
-        return button;  // 返回按钮引用
+        return button;
     }
 
     public List<FileItem> getSelectedFileItems() {
@@ -412,7 +390,7 @@ public class MainView {
         return tableView;
     }
 
-    public GridPane getGridView() {
+    public FlowPane getGridView() {  // 修改返回类型为 FlowPane
         return gridView;
     }
 
