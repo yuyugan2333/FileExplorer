@@ -11,6 +11,7 @@ import javafx.scene.layout.*;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -214,32 +215,22 @@ public class MainView {
         // 文件名列
         TableColumn<FileItem, String> nameColumn = new TableColumn<>("名称");
         nameColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
-        nameColumn.setCellFactory(col -> new TableCell<FileItem, String>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                    setGraphic(null);
-                } else {
-                    setText(item);
+        nameColumn.setPrefWidth(300);
 
-                    // 获取对应的FileItem
-                    FileItem fileItem = getTableView().getItems().get(getIndex());
-                    if (fileItem != null) {
-                        ImageView icon = fileItem.getIconView(16);
-                        if (icon != null) {
-                            setGraphic(icon);
-                        }
-                    }
+        // 修改时间列 - 使用 FileUtils 中的格式化方法
+        TableColumn<FileItem, LocalDateTime> modifiedColumn = new TableColumn<>("修改日期");
+        modifiedColumn.setCellValueFactory(new PropertyValueFactory<>("modifiedTime"));
+        modifiedColumn.setCellFactory(col -> new TableCell<FileItem, LocalDateTime>() {
+            @Override
+            protected void updateItem(LocalDateTime date, boolean empty) {
+                super.updateItem(date, empty);
+                if (empty || date == null) {
+                    setText(null);
+                } else {
+                    setText(FileUtils.formatDateTime(date));
                 }
             }
         });
-        nameColumn.setPrefWidth(300);
-
-        // 修改时间列
-        TableColumn<FileItem, String> modifiedColumn = new TableColumn<>("修改日期");
-        modifiedColumn.setCellValueFactory(new PropertyValueFactory<>("modifiedTime"));
         modifiedColumn.setPrefWidth(150);
 
         // 类型列
@@ -247,7 +238,7 @@ public class MainView {
         typeColumn.setCellValueFactory(new PropertyValueFactory<>("type"));
         typeColumn.setPrefWidth(120);
 
-        // 大小列
+        // 大小列 - 使用 FileUtils 中的格式化方法
         TableColumn<FileItem, Long> sizeColumn = new TableColumn<>("大小");
         sizeColumn.setCellValueFactory(new PropertyValueFactory<>("size"));
         sizeColumn.setCellFactory(col -> new TableCell<FileItem, Long>() {
@@ -257,7 +248,7 @@ public class MainView {
                 if (empty || size == null) {
                     setText(null);
                 } else {
-                    setText(formatSize(size));
+                    setText(FileUtils.formatSize(size));
                 }
             }
         });

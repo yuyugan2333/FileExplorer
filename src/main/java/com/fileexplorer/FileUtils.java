@@ -1,14 +1,46 @@
 package com.fileexplorer;
 
-// package com.fileexplorer; // 如果使用包，添加此行；否则移除
-
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 
 public class FileUtils {
+
+    // 日期格式化器
+    private static final DateTimeFormatter DATE_TIME_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    // 日期格式化器（仅日期）
+    private static final DateTimeFormatter DATE_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+    /**
+     * 格式化日期时间为可读字符串
+     * @param dateTime 日期时间
+     * @return 格式化后的字符串
+     */
+    public static String formatDateTime(LocalDateTime dateTime) {
+        if (dateTime == null) {
+            return "";
+        }
+        return dateTime.format(DATE_TIME_FORMATTER);
+    }
+
+    /**
+     * 格式化日期为可读字符串（仅日期部分）
+     * @param dateTime 日期时间
+     * @return 格式化后的日期字符串
+     */
+    public static String formatDate(LocalDateTime dateTime) {
+        if (dateTime == null) {
+            return "";
+        }
+        return dateTime.format(DATE_FORMATTER);
+    }
 
     /**
      * 计算文件夹的总大小（字节），递归遍历所有文件。

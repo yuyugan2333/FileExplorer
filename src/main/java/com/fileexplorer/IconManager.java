@@ -80,8 +80,6 @@ public class IconManager {
      * 创建回退图标（使用简单的图形）
      */
     private void createFallbackIcons() {
-        // 这里可以创建简单的图形作为图标
-        // 为了简化，我们可以使用系统图标
         defaultFolderIcon = createColoredIcon("#4CAF50", "📁");
         defaultFileIcon = createColoredIcon("#757575", "📄");
         imageIcon = createColoredIcon("#2196F3", "🖼️");
@@ -168,8 +166,7 @@ public class IconManager {
         } else if (fileName.endsWith(".zip") || fileName.endsWith(".rar") ||
                 fileName.endsWith(".7z") || fileName.endsWith(".tar")) {
             return archiveIcon != null ? archiveIcon : createSimpleIcon("#795548");
-        } else if (fileName.endsWith(".exe") || fileName.endsWith(".bat") ||
-                fileName.endsWith(".sh")) {
+        } else if (fileName.endsWith(".exe")) {
             return executableIcon != null ? executableIcon : createSimpleIcon("#4CAF50");
         }
 

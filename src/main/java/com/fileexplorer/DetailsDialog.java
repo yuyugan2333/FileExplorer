@@ -30,9 +30,14 @@ public class DetailsDialog extends Dialog<Void> {
             // 通用属性
             addRow(grid, 0, "路径:", path.toAbsolutePath().toString());
             addRow(grid, 1, "类型:", Files.isDirectory(path) ? "文件夹" : getFileType(path));
-            addRow(grid, 2, "创建时间:", LocalDateTime.ofInstant(attrs.creationTime().toInstant(), ZoneId.systemDefault()).toString());
-            addRow(grid, 3, "修改时间:", LocalDateTime.ofInstant(attrs.lastModifiedTime().toInstant(), ZoneId.systemDefault()).toString());
-            addRow(grid, 4, "访问时间:", LocalDateTime.ofInstant(attrs.lastAccessTime().toInstant(), ZoneId.systemDefault()).toString());
+
+            // 使用 FileUtils 中的日期格式化方法
+            addRow(grid, 2, "创建时间:",
+                    FileUtils.formatDateTime(LocalDateTime.ofInstant(attrs.creationTime().toInstant(), ZoneId.systemDefault())));
+            addRow(grid, 3, "修改时间:",
+                    FileUtils.formatDateTime(LocalDateTime.ofInstant(attrs.lastModifiedTime().toInstant(), ZoneId.systemDefault())));
+            addRow(grid, 4, "访问时间:",
+                    FileUtils.formatDateTime(LocalDateTime.ofInstant(attrs.lastAccessTime().toInstant(), ZoneId.systemDefault())));
 
             if (Files.isDirectory(path)) {
                 // 文件夹特定属性
@@ -57,18 +62,18 @@ public class DetailsDialog extends Dialog<Void> {
                     }
                 });
 
-                addRow(grid, 5, "大小:", formatSize(size.get()));
+                addRow(grid, 5, "大小:", FileUtils.formatSize(size.get()));
                 addRow(grid, 6, "包含文件数:", fileCount.get() + " 个");
                 addRow(grid, 7, "包含子文件夹数:", dirCount.get() + " 个");
             } else {
                 // 文件特定属性
-                addRow(grid, 5, "大小:", formatSize(attrs.size()));
+                addRow(grid, 5, "大小:", FileUtils.formatSize(attrs.size()));
             }
 
             // 磁盘空间（对于根路径或文件所在磁盘）
             FileStore store = Files.getFileStore(path);
-            addRow(grid, 8, "磁盘总空间:", formatSize(store.getTotalSpace()));
-            addRow(grid, 9, "磁盘可用空间:", formatSize(store.getUsableSpace()));
+            addRow(grid, 8, "磁盘总空间:", FileUtils.formatSize(store.getTotalSpace()));
+            addRow(grid, 9, "磁盘可用空间:", FileUtils.formatSize(store.getUsableSpace()));
 
         } catch (IOException e) {
             addRow(grid, 0, "错误:", "无法读取属性: " + e.getMessage());
@@ -90,13 +95,5 @@ public class DetailsDialog extends Dialog<Void> {
         } catch (IOException e) {
             return "未知";
         }
-    }
-
-    private String formatSize(long size) {
-        if (size < 0) return "--";
-        if (size < 1024) return size + " B";
-        else if (size < 1024 * 1024) return String.format("%.2f KB", size / 1024.0);
-        else if (size < 1024 * 1024 * 1024) return String.format("%.2f MB", size / (1024.0 * 1024));
-        else return String.format("%.2f GB", size / (1024.0 * 1024 * 1024));
     }
 }
