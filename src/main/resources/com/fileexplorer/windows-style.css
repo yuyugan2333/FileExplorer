@@ -518,3 +518,264 @@
     -fx-border-color: #4da6ff;
     -fx-border-width: 2px;
 }
+
+/* 树状图滚动条容器 */
+.tree-scroll-pane {
+    -fx-background-color: white;
+    -fx-border-color: #d5d5d5;
+    -fx-border-width: 0 1px 0 0;
+    -fx-padding: 0;
+}
+
+.tree-scroll-pane .viewport {
+    -fx-background-color: white;
+}
+
+/* 表格滚动条容器 */
+.table-scroll-pane {
+    -fx-background-color: white;
+    -fx-border-color: transparent;
+    -fx-padding: 0;
+}
+
+.table-scroll-pane .viewport {
+    -fx-background-color: white;
+}
+
+/* 网格滚动条容器 */
+.grid-scroll-pane {
+    -fx-background-color: white;
+    -fx-border-color: transparent;
+    -fx-padding: 0;
+}
+
+.grid-scroll-pane .viewport {
+    -fx-background-color: white;
+}
+
+/* 通用滚动条容器样式 */
+.scroll-pane {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.scroll-pane .corner {
+    -fx-background-color: transparent;
+}
+
+/* 增强滚动条样式 */
+.scroll-bar {
+    -fx-background-color: transparent;
+    -fx-background-radius: 0;
+    -fx-padding: 0;
+    -fx-min-width: 12px;
+    -fx-pref-width: 12px;
+    -fx-max-width: 12px;
+}
+
+.scroll-bar:vertical {
+    -fx-background-insets: 0, 0 0 0 1;
+    -fx-padding: 0;
+}
+
+.scroll-bar:horizontal {
+    -fx-background-insets: 0, 1 0 0 0;
+    -fx-padding: 0;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: rgba(120, 120, 120, 0.4);
+    -fx-background-radius: 6px;
+    -fx-border-radius: 6px;
+    -fx-min-width: 6px;
+    -fx-pref-width: 6px;
+    -fx-max-width: 6px;
+}
+
+.scroll-bar:vertical .thumb {
+    -fx-background-insets: 2 0 2 2;
+    -fx-min-height: 20px;
+}
+
+.scroll-bar:horizontal .thumb {
+    -fx-background-insets: 2 2 0 2;
+    -fx-min-height: 6px;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: rgba(100, 100, 100, 0.6);
+}
+
+.scroll-bar .thumb:pressed {
+    -fx-background-color: rgba(80, 80, 80, 0.8);
+}
+
+.scroll-bar .track {
+    -fx-background-color: transparent;
+    -fx-background-radius: 0;
+    -fx-border-color: transparent;
+    -fx-border-radius: 0;
+}
+
+.scroll-bar:vertical .track {
+    -fx-pref-width: 12px;
+    -fx-min-width: 12px;
+    -fx-max-width: 12px;
+    -fx-background-color: rgba(240, 240, 240, 0.5);
+    -fx-background-insets: 0;
+}
+
+.scroll-bar:horizontal .track {
+    -fx-pref-height: 12px;
+    -fx-min-height: 12px;
+    -fx-max-height: 12px;
+    -fx-background-color: rgba(240, 240, 240, 0.5);
+    -fx-background-insets: 0;
+}
+
+.scroll-bar .track-background {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+}
+
+.scroll-bar .increment-button,
+.scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-background-radius: 0;
+    -fx-border-color: transparent;
+    -fx-padding: 0 0 0 0;
+    -fx-shape: null;
+    -fx-min-width: 12px;
+    -fx-pref-width: 12px;
+    -fx-max-width: 12px;
+    -fx-min-height: 12px;
+    -fx-pref-height: 12px;
+    -fx-max-height: 12px;
+}
+
+.scroll-bar:vertical .increment-button,
+.scroll-bar:vertical .decrement-button {
+    -fx-background-color: rgba(240, 240, 240, 0.8);
+    -fx-border-color: rgba(200, 200, 200, 0.3);
+    -fx-border-width: 0 0 1px 0;
+}
+
+.scroll-bar:horizontal .increment-button,
+.scroll-bar:horizontal .decrement-button {
+    -fx-background-color: rgba(240, 240, 240, 0.8);
+    -fx-border-color: rgba(200, 200, 200, 0.3);
+    -fx-border-width: 0 1px 0 0;
+}
+
+.scroll-bar .increment-button:hover,
+.scroll-bar .decrement-button:hover {
+    -fx-background-color: rgba(220, 220, 220, 0.9);
+}
+
+.scroll-bar .increment-button:pressed,
+.scroll-bar .decrement-button:pressed {
+    -fx-background-color: rgba(200, 200, 200, 1.0);
+}
+
+.scroll-bar .increment-arrow,
+.scroll-bar .decrement-arrow {
+    -fx-background-color: #666666;
+    -fx-padding: 0;
+    -fx-shape: null;
+}
+
+.scroll-bar:vertical .increment-arrow {
+    -fx-shape: "M 0 0 L 4 4 L 8 0 Z";
+    -fx-padding: 2px;
+    -fx-scale-shape: true;
+}
+
+.scroll-bar:vertical .decrement-arrow {
+    -fx-shape: "M 0 4 L 4 0 L 8 4 Z";
+    -fx-padding: 2px;
+    -fx-scale-shape: true;
+}
+
+.scroll-bar:horizontal .increment-arrow {
+    -fx-shape: "M 0 0 L 4 4 L 0 8 Z";
+    -fx-padding: 2px;
+    -fx-scale-shape: true;
+    -fx-rotate: 0;
+}
+
+.scroll-bar:horizontal .decrement-arrow {
+    -fx-shape: "M 4 0 L 0 4 L 4 8 Z";
+    -fx-padding: 2px;
+    -fx-scale-shape: true;
+    -fx-rotate: 0;
+}
+
+/* 确保滚动条区域不占用过多空间 */
+.scroll-pane > .scroll-bar:vertical,
+.scroll-pane > .scroll-bar:horizontal {
+    -fx-opacity: 1;
+    -fx-background-color: transparent;
+}
+
+/* 当有滚动条时调整边距 */
+.scroll-pane:focused {
+    -fx-background-color: transparent;
+}
+
+/* 确保滚动条轨道背景可见 */
+.scroll-bar .track {
+    -fx-background-color: rgba(240, 240, 240, 0.8);
+}
+
+/* 树状图滚动条特殊样式 */
+.tree-scroll-pane .scroll-bar:vertical {
+    -fx-background-color: rgba(240, 240, 240, 0.5);
+    -fx-border-color: rgba(200, 200, 200, 0.3);
+    -fx-border-width: 0 0 0 1px;
+}
+
+.tree-scroll-pane .scroll-bar:vertical .thumb {
+    -fx-background-color: rgba(120, 120, 120, 0.5);
+    -fx-background-insets: 2 2 2 3;
+}
+
+.tree-scroll-pane .scroll-bar:vertical .thumb:hover {
+    -fx-background-color: rgba(100, 100, 100, 0.7);
+}
+
+.tree-scroll-pane .scroll-bar:vertical .thumb:pressed {
+    -fx-background-color: rgba(80, 80, 80, 0.9);
+}
+
+/* 确保滚动条在内容上悬浮显示，不占用布局空间 */
+.scroll-pane .scroll-bar {
+    -fx-background-color: transparent;
+}
+
+.scroll-pane .scroll-bar .track {
+    -fx-background-color: rgba(240, 240, 240, 0.8);
+}
+
+/* 表格视图滚动条 */
+.table-scroll-pane .scroll-bar:vertical {
+    -fx-background-color: rgba(240, 240, 240, 0.5);
+    -fx-border-color: rgba(200, 200, 200, 0.3);
+    -fx-border-width: 0 0 0 1px;
+}
+
+.table-scroll-pane .scroll-bar:vertical .thumb {
+    -fx-background-color: rgba(120, 120, 120, 0.5);
+    -fx-background-insets: 2 2 2 3;
+}
+
+/* 网格视图滚动条 */
+.grid-scroll-pane .scroll-bar:vertical {
+    -fx-background-color: rgba(240, 240, 240, 0.5);
+    -fx-border-color: rgba(200, 200, 200, 0.3);
+    -fx-border-width: 0 0 0 1px;
+}
+
+.grid-scroll-pane .scroll-bar:vertical .thumb {
+    -fx-background-color: rgba(120, 120, 120, 0.5);
+    -fx-background-insets: 2 2 2 3;
+}

@@ -22,35 +22,44 @@ public class FileItem {
 
     public FileItem(Path path) {
         this.path = path;
-        this.name = new SimpleStringProperty(path.getFileName() != null ?
-                path.getFileName().toString() : path.toString());
-        this.isDirectory = Files.isDirectory(path);
+        // 特殊处理"此电脑"路径
+        if (path.toString().equals("此电脑")) {
+            this.name = new SimpleStringProperty("此电脑");
+            this.isDirectory = true;
+            this.type = new SimpleStringProperty("系统文件夹");
+            this.size = new SimpleLongProperty(-1);
+            this.modifiedTime = new SimpleObjectProperty<>(LocalDateTime.now());
+        } else {
+            this.name = new SimpleStringProperty(path.getFileName() != null ?
+                    path.getFileName().toString() : path.toString());
+            this.isDirectory = Files.isDirectory(path);
 
-        String tempType;
-        long tempSize = 0;
-        LocalDateTime tempModified = LocalDateTime.now();
+            String tempType;
+            long tempSize = 0;
+            LocalDateTime tempModified = LocalDateTime.now();
 
-        try {
-            BasicFileAttributes attrs = Files.readAttributes(path, BasicFileAttributes.class);
-            tempModified = LocalDateTime.ofInstant(attrs.lastModifiedTime().toInstant(),
-                    ZoneId.systemDefault());
+            try {
+                BasicFileAttributes attrs = Files.readAttributes(path, BasicFileAttributes.class);
+                tempModified = LocalDateTime.ofInstant(attrs.lastModifiedTime().toInstant(),
+                        ZoneId.systemDefault());
 
-            if (isDirectory) {
-                tempType = "文件夹";
-                tempSize = -1;
-            } else {
-                // 使用FileUtils中的方法获取文件类型描述
-                tempType = FileUtils.getFileTypeDescription(path);
-                tempSize = attrs.size();
+                if (isDirectory) {
+                    tempType = "文件夹";
+                    tempSize = -1;
+                } else {
+                    // 使用FileUtils中的方法获取文件类型描述
+                    tempType = FileUtils.getFileTypeDescription(path);
+                    tempSize = attrs.size();
+                }
+            } catch (IOException e) {
+                tempType = "未知";
+                System.err.println("无法读取文件属性: " + path + " - " + e.getMessage());
             }
-        } catch (IOException e) {
-            tempType = "未知";
-            System.err.println("无法读取文件属性: " + path + " - " + e.getMessage());
-        }
 
-        this.type = new SimpleStringProperty(tempType);
-        this.size = new SimpleLongProperty(tempSize);
-        this.modifiedTime = new SimpleObjectProperty<>(tempModified);
+            this.type = new SimpleStringProperty(tempType);
+            this.size = new SimpleLongProperty(tempSize);
+            this.modifiedTime = new SimpleObjectProperty<>(tempModified);
+        }
 
         // 初始化图标
         Image tempIcon = IconManager.getInstance().getIconForFile(path);

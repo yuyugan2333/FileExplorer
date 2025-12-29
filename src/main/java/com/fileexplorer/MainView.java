@@ -11,6 +11,7 @@ import javafx.scene.layout.*;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -35,9 +36,12 @@ public class MainView {
     private final Set<FileItem> selectedItemsInGrid = new HashSet<>();
     private Label statusLabel;
     private HBox statusBar;
+    private ScrollPane tableScroll;
+    private ScrollPane gridScroll;
 
     public MainView() {
         initializeLayout();
+        root.getStylesheets().add(getClass().getResource("/com/fileexplorer/windows-style.css").toExternalForm());
     }
 
     private void initializeLayout() {
@@ -59,13 +63,32 @@ public class MainView {
         // 创建网格视图
         createGridView();
 
+        // 创建包装用的ScrollPane
+        tableScroll = new ScrollPane(tableView);
+        tableScroll.setFitToWidth(true);
+        tableScroll.setFitToHeight(true);
+        tableScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        tableScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        tableScroll.getStyleClass().add("table-scroll-pane");
+
+        // 包装网格视图
+        gridScroll = new ScrollPane(gridView);
+        gridScroll.setFitToWidth(true);
+        gridScroll.setFitToHeight(true);
+        gridScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        gridScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        gridScroll.getStyleClass().add("grid-scroll-pane");
+        gridScroll.setVisible(false);  // 初始时隐藏
+
+        // 将两个ScrollPane放入StackPane，方便切换
+        StackPane viewContainer = new StackPane();
+        viewContainer.getChildren().addAll(tableScroll, gridScroll);
+
         // 设置布局
         root.setTop(toolBar);
-        root.setLeft(createTreeContainer());  // 修改这里
+        root.setLeft(createTreeContainer());
+        root.setCenter(viewContainer);  // 将StackPane设置到center
         root.setBottom(statusBar);
-
-        // 初始显示表格视图
-        root.setCenter(tableView);
     }
 
     private void createToolBar() {
@@ -144,7 +167,7 @@ public class MainView {
         // 创建目录树的容器
         ScrollPane treeScroll = new ScrollPane(treeView);
         treeScroll.setFitToWidth(true);
-        treeScroll.setFitToHeight(true);  // 添加这行，确保高度适应
+        treeScroll.setFitToHeight(true);
         treeScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         treeScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         treeScroll.setStyle("-fx-background: white; -fx-border-color: transparent;");
@@ -160,6 +183,11 @@ public class MainView {
         treeView = new TreeView<>();
         treeView.getStyleClass().add("tree-view");
 
+        // 创建根节点："此电脑"
+        TreeItem<Path> rootItem = new TreeItem<>(Paths.get("此电脑"));
+        rootItem.setExpanded(true);
+        treeView.setRoot(rootItem);
+
         // 设置TreeCell工厂以显示图标
         treeView.setCellFactory(param -> new TreeCell<Path>() {
             @Override
@@ -169,11 +197,15 @@ public class MainView {
                     setText(null);
                     setGraphic(null);
                 } else {
-                    setText(item.getFileName() != null ?
-                            item.getFileName().toString() : item.toString());
+                    if (item.toString().equals("此电脑")) {
+                        setText("此电脑");
+                    } else {
+                        setText(item.getFileName() != null ?
+                                item.getFileName().toString() : item.toString());
+                    }
 
                     // 为目录添加图标
-                    if (Files.isDirectory(item)) {
+                    if (item.toString().equals("此电脑") || Files.isDirectory(item)) {
                         ImageView icon = IconManager.getInstance().createFolderIconView(16);
                         if (icon != null) {
                             setGraphic(icon);
@@ -345,7 +377,7 @@ public class MainView {
         if (isGridMode) {
             return new ArrayList<>(selectedItemsInGrid);
         } else {
-            return new ArrayList<>(getTableView().getSelectionModel().getSelectedItems());
+            return new ArrayList<>(tableView.getSelectionModel().getSelectedItems());
         }
     }
 

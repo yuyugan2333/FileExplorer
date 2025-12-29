@@ -9,7 +9,6 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
-import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.stage.Stage;
@@ -38,6 +37,7 @@ public class FileExplorerController {
     public FileExplorerController(MainView mainView, Stage primaryStage) {
         this.mainView = mainView;
         this.primaryStage = primaryStage;
+        mainView.getRoot().getStylesheets().add(getClass().getResource("/com/fileexplorer/windows-style.css").toExternalForm());
         initialize();
     }
 
@@ -86,7 +86,12 @@ public class FileExplorerController {
         // 监听树选择变化，刷新文件列表
         mainView.getTreeView().getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
-                navigateTo(newVal.getValue());
+                // 处理特殊路径："此电脑"
+                if (newVal.getValue().toString().equals("此电脑")) {
+                    loadHomePage();
+                } else {
+                    navigateTo(newVal.getValue());
+                }
             }
         });
 
@@ -185,8 +190,14 @@ public class FileExplorerController {
         // 模式切换按钮
         mainView.getModeButton().setOnAction(e -> {
             mainView.switchViewMode();
-            if (mainView.getGridView().isVisible()) {
-                loadGridView(currentPath); // 填充网格视图
+            if (mainView.getGridView().isVisible()) {  // 网格视图可见
+                if (currentPath != null) {
+                    loadGridView(currentPath);  // 使用已有的 loadGridView 方法
+                } else {
+                    loadHomePage();
+                }
+            } else {
+                // 列表视图已经显示，不需要重新加载
             }
         });
 
@@ -214,17 +225,26 @@ public class FileExplorerController {
         // 设置当前路径为null，表示在首页
         currentPath = null;
 
-        // 清空历史记录中的首页标记
-        if (!history.isEmpty() && history.get(0) == null) {
-            history.set(0, null);
-        } else {
-            history.add(0, null);
+        // 更新历史记录
+        if (currentIndex < 0 || history.isEmpty()) {
+            history.add(null);
+            currentIndex = 0;
+        } else if (history.get(currentIndex) != null) {
+            // 如果不是从首页跳转过来的，添加历史记录
+            addToHistory(null);
         }
-        currentIndex = 0;
 
         // 更新UI状态
         updateNavigationButtons();
         mainView.getPathField().setText("此电脑");
+
+        // 选中树视图中的"此电脑"节点
+        Platform.runLater(() -> {
+            TreeItem<Path> root = mainView.getTreeView().getRoot();
+            if (root != null) {
+                mainView.getTreeView().getSelectionModel().select(root);
+            }
+        });
 
         // 清除当前加载任务
         if (currentLoadingTask != null && currentLoadingTask.isRunning()) {
@@ -237,30 +257,8 @@ public class FileExplorerController {
             protected List<FileItem> call() throws Exception {
                 List<FileItem> items = new ArrayList<>();
 
-                // 添加"此电脑"虚拟项
-                items.add(new FileItem(Paths.get("此电脑")) {
-                    @Override
-                    public String getName() {
-                        return "此电脑";
-                    }
-
-                    @Override
-                    public String getType() {
-                        return "系统文件夹";
-                    }
-
-                    @Override
-                    public long getSize() {
-                        return -1;
-                    }
-
-                    @Override
-                    public boolean isDirectory() {
-                        return true;
-                    }
-                });
-
-                // 获取所有磁盘驱动器
+                // 不再添加"此电脑"虚拟项
+                // 直接获取所有磁盘驱动器
                 FileSystem fs = FileSystems.getDefault();
                 for (Path root : fs.getRootDirectories()) {
                     try {
@@ -507,9 +505,14 @@ public class FileExplorerController {
     }
 
     private void loadDirectoryTree() {
-        // 创建根节点
-        TreeItem<Path> rootItem = new TreeItem<>(Paths.get("此电脑"));
-        rootItem.setExpanded(true);
+        // 树视图已经在MainView中创建，这里只需要加载子节点
+        TreeItem<Path> rootItem = mainView.getTreeView().getRoot();
+        if (rootItem == null) {
+            return;
+        }
+
+        // 清空现有子节点
+        rootItem.getChildren().clear();
 
         // 异步加载磁盘驱动器
         Task<Void> loadTask = new Task<>() {
@@ -547,49 +550,6 @@ public class FileExplorerController {
         });
 
         threadPool.submitBackgroundTask(loadTask);
-
-        mainView.getTreeView().setRoot(rootItem);
-
-        // 设置TreeCell工厂
-        mainView.getTreeView().setCellFactory(tv -> new TreeCell<>() {
-            @Override
-            protected void updateItem(Path item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                    setGraphic(null);
-                } else {
-                    if (item.toString().equals("此电脑")) {
-                        setText("此电脑");
-                    } else {
-                        String displayName = item.getFileName() != null ?
-                                item.getFileName().toString() : item.toString();
-
-                        // 为磁盘驱动器添加盘符
-                        if (item.getParent() == null) {
-                            try {
-                                FileStore store = Files.getFileStore(item);
-                                String storeName = store.name();
-                                if (storeName != null && !storeName.isEmpty()) {
-                                    displayName += " (" + storeName + ")";
-                                }
-                            } catch (IOException e) {
-                                // 忽略异常
-                            }
-                        }
-                        setText(displayName);
-                    }
-
-                    // 添加图标
-                    if (Files.isDirectory(item) || item.toString().equals("此电脑")) {
-                        ImageView icon = IconManager.getInstance().createFolderIconView(16);
-                        if (icon != null) {
-                            setGraphic(icon);
-                        }
-                    }
-                }
-            }
-        });
     }
 
     private ContextMenu createTreeContextMenu() {
@@ -1259,6 +1219,11 @@ public class FileExplorerController {
         }
 
         try {
+            if (newPath.toString().equals("此电脑")) {
+                loadHomePage();
+                return;
+            }
+
             if (!Files.exists(newPath)) {
                 showAlert("错误", "路径不存在: " + newPath);
                 return;
@@ -1319,7 +1284,7 @@ public class FileExplorerController {
     private void updateNavigationButtons() {
         mainView.getBackButton().setDisable(currentIndex <= 0);
         mainView.getForwardButton().setDisable(currentIndex >= history.size() - 1);
-        mainView.getUpButton().setDisable(currentPath == null || currentPath.getParent() == null);
+        mainView.getUpButton().setDisable(currentPath == null);
     }
 
     private void updatePathField() {
@@ -1331,9 +1296,18 @@ public class FileExplorerController {
     }
 
     // 在树视图中选择对应路径的节点
+    // 在树视图中选择对应路径的节点
     private void selectInTreeView(Path path) {
+        if (path == null) {
+            // 如果是在首页，选择"此电脑"节点
+            TreeItem<Path> root = mainView.getTreeView().getRoot();
+            if (root != null) {
+                mainView.getTreeView().getSelectionModel().select(root);
+            }
+            return;
+        }
+
         // 查找树视图中对应的节点并选中
-        // 这是一个简化版本，实际实现可能需要递归查找
         TreeItem<Path> root = mainView.getTreeView().getRoot();
         if (root != null) {
             // 递归查找路径对应的节点
@@ -1342,7 +1316,7 @@ public class FileExplorerController {
                 mainView.getTreeView().getSelectionModel().select(found);
                 // 展开到该节点
                 TreeItem<Path> parent = found.getParent();
-                while (parent != null) {
+                while (parent != null && parent != root) {
                     parent.setExpanded(true);
                     parent = parent.getParent();
                 }
