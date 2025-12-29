@@ -1,8 +1,12 @@
 package com.fileexplorer;
 
 import javafx.beans.property.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -14,10 +18,12 @@ public class FileItem {
     private final ObjectProperty<LocalDateTime> modifiedTime;
     private final Path path;
     private final boolean isDirectory;
+    private final ObjectProperty<Image> icon;
 
     public FileItem(Path path) {
         this.path = path;
-        this.name = new SimpleStringProperty(path.getFileName() != null ? path.getFileName().toString() : path.toString());
+        this.name = new SimpleStringProperty(path.getFileName() != null ?
+                path.getFileName().toString() : path.toString());
         this.isDirectory = Files.isDirectory(path);
 
         String tempType;
@@ -26,11 +32,11 @@ public class FileItem {
 
         try {
             BasicFileAttributes attrs = Files.readAttributes(path, BasicFileAttributes.class);
-            tempModified = LocalDateTime.ofInstant(attrs.lastModifiedTime().toInstant(), ZoneId.systemDefault());
+            tempModified = LocalDateTime.ofInstant(attrs.lastModifiedTime().toInstant(),
+                    ZoneId.systemDefault());
 
             if (isDirectory) {
                 tempType = "文件夹";
-                // 文件夹大小可稍后递归计算，这里暂设为 -1 表示未计算
                 tempSize = -1;
             } else {
                 tempType = getFileType(path);
@@ -38,13 +44,40 @@ public class FileItem {
             }
         } catch (IOException e) {
             tempType = "未知";
-            // 处理异常：权限问题等，显示默认值
             System.err.println("无法读取文件属性: " + path + " - " + e.getMessage());
         }
 
         this.type = new SimpleStringProperty(tempType);
         this.size = new SimpleLongProperty(tempSize);
         this.modifiedTime = new SimpleObjectProperty<>(tempModified);
+
+        // 初始化图标
+        Image tempIcon = IconManager.getInstance().getIconForFile(path);
+        this.icon = new SimpleObjectProperty<>(tempIcon);
+    }
+
+    public void setIcon(Image icon) {
+        this.icon.set(icon);
+    }
+
+    public ObjectProperty<Image> iconProperty() {
+        return icon;
+    }
+
+    public Image getIcon() {
+        return icon.get();
+    }
+
+    public ImageView getIconView(int size) {
+        Image icon = getIcon();
+        if (icon != null) {
+            ImageView imageView = new ImageView(icon);
+            imageView.setFitWidth(size);
+            imageView.setFitHeight(size);
+            imageView.setPreserveRatio(true);
+            return imageView;
+        }
+        return null;
     }
 
     private String getFileType(Path path) {

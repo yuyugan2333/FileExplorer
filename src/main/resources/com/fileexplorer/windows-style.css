@@ -1,0 +1,502 @@
+/* windows-style.css - Windows 11/10风格的文件浏览器 */
+
+.root {
+    -fx-font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    -fx-font-size: 12px;
+    -fx-accent: #0078D4;
+    -fx-focus-color: #0078D4;
+    -fx-faint-focus-color: #0078D422;
+}
+
+/* 工具栏样式 */
+.tool-bar {
+    -fx-background-color: linear-gradient(to bottom, #f8f8f8, #e8e8e8);
+    -fx-padding: 8px 12px;
+    -fx-spacing: 8px;
+    -fx-border-color: #d5d5d5;
+    -fx-border-width: 0 0 1px 0;
+}
+
+.tool-bar .button {
+    -fx-background-color: transparent;
+    -fx-background-radius: 3px;
+    -fx-border-color: transparent;
+    -fx-border-radius: 3px;
+    -fx-padding: 5px 10px;
+    -fx-font-size: 12px;
+    -fx-text-fill: #333333;
+    -fx-cursor: hand;
+}
+
+.tool-bar .button:hover {
+    -fx-background-color: rgba(0, 0, 0, 0.08);
+    -fx-text-fill: #000000;
+}
+
+.tool-bar .button:pressed {
+    -fx-background-color: rgba(0, 0, 0, 0.12);
+}
+
+.tool-bar .button:disabled {
+    -fx-text-fill: #999999;
+    -fx-cursor: default;
+}
+
+.tool-bar .separator:vertical .line {
+    -fx-border-color: #cccccc transparent transparent transparent;
+    -fx-border-width: 1px 0 0 0;
+    -fx-padding: 0 5px;
+}
+
+.tool-bar .text-field {
+    -fx-background-color: white;
+    -fx-border-color: #a6a6a6;
+    -fx-border-radius: 2px;
+    -fx-border-width: 1px;
+    -fx-padding: 4px 8px;
+    -fx-font-size: 12px;
+}
+
+.tool-bar .text-field:focused {
+    -fx-border-color: #0078D4;
+    -fx-effect: dropshadow(gaussian, rgba(0, 120, 212, 0.3), 2, 0, 0, 0);
+}
+
+/* 路径栏样式 */
+.path-field {
+    -fx-background-color: white;
+    -fx-border-color: #a6a6a6;
+    -fx-border-radius: 2px;
+    -fx-padding: 4px 8px;
+    -fx-font-size: 12px;
+}
+
+.path-field:focused {
+    -fx-border-color: #0078D4;
+    -fx-effect: dropshadow(gaussian, rgba(0, 120, 212, 0.3), 2, 0, 0, 0);
+}
+
+/* 搜索框样式 */
+.search-field {
+    -fx-background-color: white;
+    -fx-border-color: #a6a6a6;
+    -fx-border-radius: 2px;
+    -fx-padding: 4px 8px 4px 30px;
+    -fx-background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="12" height="12"><path fill="%23666" d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/></svg>');
+    -fx-background-repeat: no-repeat;
+    -fx-background-position: 8px center;
+}
+
+.search-field:focused {
+    -fx-border-color: #0078D4;
+    -fx-effect: dropshadow(gaussian, rgba(0, 120, 212, 0.3), 2, 0, 0, 0);
+}
+
+/* 目录树样式 */
+.tree-view {
+    -fx-background-color: white;
+    -fx-border-color: #d5d5d5;
+    -fx-border-width: 0 1px 0 0;
+    -fx-padding: 8px;
+}
+
+.tree-cell {
+    -fx-background-color: transparent;
+    -fx-padding: 2px 4px;
+    -fx-font-size: 12px;
+    -fx-text-fill: #333333;
+    -fx-cursor: hand;
+}
+
+.tree-cell:hover {
+    -fx-background-color: rgba(0, 120, 212, 0.08);
+}
+
+.tree-cell:selected {
+    -fx-background-color: #e5f1fb;
+    -fx-text-fill: #000000;
+    -fx-font-weight: normal;
+}
+
+.tree-cell .arrow {
+    -fx-background-color: #666666;
+}
+
+.tree-cell:expanded .arrow {
+    -fx-background-color: #333333;
+}
+
+/* 表格视图样式 */
+.table-view {
+    -fx-background-color: white;
+    -fx-border-color: transparent;
+    -fx-font-size: 12px;
+    -fx-table-cell-border-color: transparent;
+    -fx-table-header-border-color: #d5d5d5;
+}
+
+.table-view .column-header {
+    -fx-background-color: #f8f8f8;
+    -fx-border-color: #d5d5d5;
+    -fx-border-width: 0 0 1px 0;
+    -fx-padding: 8px 8px;
+    -fx-font-weight: normal;
+    -fx-text-fill: #666666;
+    -fx-alignment: center-left;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: transparent;
+}
+
+.table-view .column-header:hover {
+    -fx-background-color: #e8e8e8;
+}
+
+.table-view .table-row-cell {
+    -fx-background-color: white;
+    -fx-border-color: transparent;
+    -fx-padding: 2px 0;
+    -fx-cell-size: 28px;
+}
+
+.table-view .table-row-cell:filled:hover {
+    -fx-background-color: rgba(0, 120, 212, 0.08);
+}
+
+.table-view .table-row-cell:filled:selected {
+    -fx-background-color: #e5f1fb;
+    -fx-text-fill: #000000;
+}
+
+.table-view .table-row-cell:filled:selected:hover {
+    -fx-background-color: #d0e6f8;
+}
+
+.table-view .table-cell {
+    -fx-border-color: transparent;
+    -fx-padding: 4px 8px;
+    -fx-alignment: center-left;
+    -fx-text-fill: #333333;
+}
+
+.table-view .table-cell:selected {
+    -fx-text-fill: #000000;
+}
+
+/* 网格视图样式 */
+.grid-pane {
+    -fx-background-color: white;
+    -fx-padding: 10px;
+    -fx-hgap: 10px;
+    -fx-vgap: 10px;
+}
+
+/* 网格视图按钮样式 */
+.grid-button {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-border-radius: 3px;
+    -fx-padding: 8px 4px;
+    -fx-font-size: 11px;
+    -fx-text-fill: #333333;
+    -fx-text-alignment: center;
+    -fx-content-display: top;
+    -fx-alignment: center;
+    -fx-min-width: 80px;
+    -fx-max-width: 80px;
+    -fx-wrap-text: true;
+    -fx-cursor: hand;
+}
+
+.grid-button:hover {
+    -fx-background-color: rgba(0, 120, 212, 0.08);
+    -fx-border-color: #d5d5d5;
+}
+
+.grid-button:selected {
+    -fx-background-color: #e5f1fb;
+    -fx-border-color: #0078D4;
+    -fx-text-fill: #000000;
+}
+
+.grid-button .image-view {
+    -fx-effect: none;
+}
+
+/* 状态栏样式 */
+.status-bar {
+    -fx-background-color: #f0f0f0;
+    -fx-border-color: #d5d5d5;
+    -fx-border-width: 1px 0 0 0;
+    -fx-padding: 4px 12px;
+    -fx-font-size: 11px;
+    -fx-text-fill: #666666;
+}
+
+/* 滚动条样式 */
+.scroll-bar {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #c0c0c0;
+    -fx-background-radius: 6px;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #a8a8a8;
+}
+
+.scroll-bar .thumb:pressed {
+    -fx-background-color: #787878;
+}
+
+.scroll-bar .track {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-background-radius: 0;
+}
+
+.scroll-bar .increment-button,
+.scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+    -fx-shape: null;
+}
+
+.scroll-bar .increment-arrow,
+.scroll-bar .decrement-arrow {
+    -fx-background-color: #666666;
+    -fx-shape: "M 0 0 L 4 4 L 8 0 Z";
+    -fx-padding: 2px;
+}
+
+/* 进度条样式 */
+.progress-bar {
+    -fx-accent: #0078D4;
+    -fx-background-color: #e5e5e5;
+    -fx-background-radius: 2px;
+    -fx-border-radius: 2px;
+    -fx-pref-height: 4px;
+}
+
+.progress-bar .bar {
+    -fx-background-color: #0078D4;
+    -fx-background-radius: 2px;
+    -fx-padding: 0;
+}
+
+/* 右键菜单样式 */
+.context-menu {
+    -fx-background-color: white;
+    -fx-border-color: #d5d5d5;
+    -fx-border-radius: 2px;
+    -fx-background-radius: 2px;
+    -fx-padding: 4px 0;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 8, 0, 0, 2);
+}
+
+.menu-item {
+    -fx-background-color: transparent;
+    -fx-padding: 6px 24px 6px 12px;
+    -fx-text-fill: #333333;
+    -fx-font-size: 12px;
+    -fx-cursor: hand;
+}
+
+.menu-item:hover {
+    -fx-background-color: #e5f1fb;
+}
+
+.menu-item:disabled {
+    -fx-text-fill: #999999;
+    -fx-cursor: default;
+}
+
+.separator-menu-item .line {
+    -fx-border-color: #e5e5e5;
+    -fx-border-width: 1px 0 0 0;
+    -fx-padding: 3px 0;
+}
+
+/* 对话框样式 */
+.dialog-pane {
+    -fx-background-color: white;
+    -fx-border-color: #d5d5d5;
+    -fx-border-radius: 3px;
+    -fx-background-radius: 3px;
+}
+
+.dialog-pane .header-panel {
+    -fx-background-color: #f8f8f8;
+    -fx-border-color: #d5d5d5;
+    -fx-border-width: 0 0 1px 0;
+    -fx-padding: 12px 20px;
+}
+
+.dialog-pane .header-panel .label {
+    -fx-font-size: 16px;
+    -fx-font-weight: normal;
+    -fx-text-fill: #333333;
+}
+
+.dialog-pane .content {
+    -fx-padding: 20px;
+    -fx-font-size: 12px;
+    -fx-text-fill: #333333;
+}
+
+/* 按钮样式 */
+.button {
+    -fx-background-color: #f0f0f0;
+    -fx-background-radius: 3px;
+    -fx-border-color: #d5d5d5;
+    -fx-border-radius: 3px;
+    -fx-border-width: 1px;
+    -fx-padding: 6px 12px;
+    -fx-font-size: 12px;
+    -fx-text-fill: #333333;
+    -fx-cursor: hand;
+}
+
+.button:hover {
+    -fx-background-color: #e8e8e8;
+    -fx-border-color: #c0c0c0;
+}
+
+.button:pressed {
+    -fx-background-color: #e0e0e0;
+    -fx-border-color: #a0a0a0;
+}
+
+.button:focused {
+    -fx-border-color: #0078D4;
+    -fx-effect: dropshadow(gaussian, rgba(0, 120, 212, 0.3), 2, 0, 0, 0);
+}
+
+.button:default {
+    -fx-background-color: #0078D4;
+    -fx-text-fill: white;
+    -fx-border-color: #0066b4;
+}
+
+.button:default:hover {
+    -fx-background-color: #0066b4;
+    -fx-border-color: #005499;
+}
+
+.button:default:pressed {
+    -fx-background-color: #005499;
+    -fx-border-color: #004377;
+}
+
+.button:default:focused {
+    -fx-border-color: #003c66;
+    -fx-effect: dropshadow(gaussian, rgba(0, 120, 212, 0.5), 3, 0, 0, 0);
+}
+
+/* 标签样式 */
+.label {
+    -fx-text-fill: #333333;
+    -fx-font-size: 12px;
+}
+
+/* 分隔符样式 */
+.separator .line {
+    -fx-border-color: #e0e0e0;
+    -fx-border-width: 1px 0 0 0;
+}
+
+/* 选项卡样式 */
+.tab-pane {
+    -fx-background-color: white;
+    -fx-border-color: #d5d5d5;
+    -fx-tab-min-height: 30px;
+    -fx-tab-max-height: 30px;
+}
+
+.tab-pane .tab-header-area {
+    -fx-background-color: #f8f8f8;
+    -fx-border-color: #d5d5d5;
+    -fx-border-width: 0 0 1px 0;
+}
+
+.tab-pane .tab-header-background {
+    -fx-background-color: transparent;
+}
+
+.tab-pane .tab {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 8px 12px;
+    -fx-font-size: 12px;
+    -fx-text-fill: #666666;
+    -fx-cursor: hand;
+}
+
+.tab-pane .tab:hover {
+    -fx-background-color: #f0f0f0;
+    -fx-text-fill: #333333;
+}
+
+.tab-pane .tab:selected {
+    -fx-background-color: white;
+    -fx-border-color: #d5d5d5 #d5d5d5 white #d5d5d5;
+    -fx-border-width: 1px 1px 0 1px;
+    -fx-text-fill: #333333;
+    -fx-font-weight: normal;
+}
+
+.tab-pane .tab:selected .focus-indicator {
+    -fx-border-color: transparent;
+}
+
+.tab-pane .tab-content-area {
+    -fx-background-color: white;
+}
+
+/* 复选框样式 */
+.check-box {
+    -fx-text-fill: #333333;
+    -fx-font-size: 12px;
+}
+
+.check-box .box {
+    -fx-background-color: white;
+    -fx-border-color: #a6a6a6;
+    -fx-border-radius: 2px;
+    -fx-border-width: 1px;
+}
+
+.check-box:selected .box {
+    -fx-background-color: #0078D4;
+    -fx-border-color: #0066b4;
+}
+
+.check-box:selected .mark {
+    -fx-background-color: white;
+}
+
+/* 单选按钮样式 */
+.radio-button {
+    -fx-text-fill: #333333;
+    -fx-font-size: 12px;
+}
+
+.radio-button .radio {
+    -fx-background-color: white;
+    -fx-border-color: #a6a6a6;
+    -fx-border-radius: 10px;
+    -fx-border-width: 1px;
+}
+
+.radio-button:selected .radio {
+    -fx-background-color: white;
+    -fx-border-color: #0078D4;
+}
+
+.radio-button:selected .dot {
+    -fx-background-color: #0078D4;
+    -fx-background-radius: 5px;
+}

@@ -436,29 +436,21 @@ public class FileExplorerController {
     }
 
     private void loadGridView(Path dir) {
-        mainView.getGridView().getChildren().clear();
-        mainView.getSelectedItemsInGrid().clear();  // 清空选中项
+        mainView.clearGridView();  // 清空网格视图
 
         int col = 0, row = 0;
+        int maxCols = 6;  // 每行6个项目
+
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
             for (Path entry : stream) {
-                // 创建 FileItem
-                FileItem item = new FileItem(entry);
-
-                // 使用 Button 表示文件/文件夹
-                Button iconButton = new Button(entry.getFileName().toString());
-
-                // 设置 UserData 为 FileItem，便于获取
-                iconButton.setUserData(item);
-
-                // 添加鼠标点击事件处理多选和打开
-                iconButton.setOnMouseClicked(event -> handleGridItemClick(event, iconButton, item));
-
-                mainView.getGridView().add(iconButton, col++, row);
-                if (col > 4) { // 每行5个
+                if (col >= maxCols) {
                     col = 0;
                     row++;
                 }
+
+                FileItem item = new FileItem(entry);
+                mainView.addGridItem(item, col, row);
+                col++;
             }
         } catch (IOException e) {
             showAlert("错误", "加载网格视图失败: " + e.getMessage());
@@ -482,22 +474,24 @@ public class FileExplorerController {
                     // Ctrl + 点击：切换选中状态
                     if (selected.contains(item)) {
                         selected.remove(item);
-                        button.getStyleClass().remove("selected");
+                        button.setSelected(false);
                     } else {
                         selected.add(item);
-                        button.getStyleClass().add("selected");
+                        button.setSelected(true);
                     }
+                } else if (event.isShiftDown()) {
+                    // Shift + 点击：范围选择（需要实现）
+                    // 暂时不处理
                 } else {
                     // 无修饰键：清空其他选中，只选中当前
-                    // 先清空所有按钮的选中样式
                     for (Node node : mainView.getGridView().getChildren()) {
                         if (node instanceof Button) {
-                            node.getStyleClass().remove("selected");
+                            ((Button) node).setSelected(false);
                         }
                     }
                     selected.clear();
                     selected.add(item);
-                    button.getStyleClass().add("selected");
+                    button.setSelected(true);
                 }
             }
         }
