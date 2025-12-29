@@ -9,10 +9,10 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.stage.Stage;
-import javafx.util.Callback;
 
 import java.awt.*;
 import java.io.IOException;
@@ -49,27 +49,36 @@ public class FileExplorerController {
         // 加载目录树
         loadDirectoryTree();
 
-        // 初始加载文件
-        loadFiles(currentPath);
+        // 初始加载文件 - 改为加载首页（所有驱动器）
+        loadHomePage();
 
         // 更新路径显示
-        updatePathField();
+        mainView.getPathField().setText("此电脑");
 
         // 导航按钮事件
         mainView.getBackButton().setOnAction(e -> goBack());
         mainView.getForwardButton().setOnAction(e -> goForward());
-        mainView.getUpButton().setOnAction(e -> goUp());
+        mainView.getUpButton().setOnAction(e -> {
+            if (currentPath != null) {
+                goUp();
+            } else {
+                // 如果在"此电脑"页面，点击上一级应该回到首页
+                loadHomePage();
+            }
+        });
 
         // 路径输入框回车事件
         mainView.getPathField().setOnAction(e -> {
             String pathText = mainView.getPathField().getText().trim();
-            if (!pathText.isEmpty()) {
+            if (pathText.equals("此电脑") || pathText.equalsIgnoreCase("Computer")) {
+                loadHomePage();
+            } else if (!pathText.isEmpty()) {
                 Path newPath = Paths.get(pathText);
                 if (Files.exists(newPath) && Files.isDirectory(newPath)) {
                     navigateTo(newPath);
                 } else {
                     showAlert("错误", "路径不存在或不是目录: " + pathText);
-                    updatePathField(); // 恢复显示当前路径
+                    updatePathField();
                 }
             }
         });
@@ -86,11 +95,22 @@ public class FileExplorerController {
             if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2) {
                 FileItem selected = mainView.getTableView().getSelectionModel().getSelectedItem();
                 if (selected != null) {
-                    if (selected.isDirectory()) {
-                        // 如果是文件夹，切换到该目录
-                        navigateTo(selected.getPath());
+                    if (currentPath == null) {
+                        // 在首页双击
+                        if (selected.getPath().toString().equals("此电脑")) {
+                            // 已经在首页
+                        } else if (selected.isDirectory()) {
+                            navigateTo(selected.getPath());
+                        } else {
+                            openFile(selected.getPath());
+                        }
                     } else {
-                        openFile(selected.getPath());
+                        // 在普通目录中双击
+                        if (selected.isDirectory()) {
+                            navigateTo(selected.getPath());
+                        } else {
+                            openFile(selected.getPath());
+                        }
                     }
                 }
             }
@@ -187,6 +207,221 @@ public class FileExplorerController {
         initializeClipboardListener();
     }
 
+    /**
+     * 加载首页（显示所有驱动器和特殊文件夹）
+     */
+    private void loadHomePage() {
+        // 设置当前路径为null，表示在首页
+        currentPath = null;
+
+        // 清空历史记录中的首页标记
+        if (!history.isEmpty() && history.get(0) == null) {
+            history.set(0, null);
+        } else {
+            history.add(0, null);
+        }
+        currentIndex = 0;
+
+        // 更新UI状态
+        updateNavigationButtons();
+        mainView.getPathField().setText("此电脑");
+
+        // 清除当前加载任务
+        if (currentLoadingTask != null && currentLoadingTask.isRunning()) {
+            currentLoadingTask.cancel();
+        }
+
+        // 创建首页加载任务
+        currentLoadingTask = new Task<List<FileItem>>() {
+            @Override
+            protected List<FileItem> call() throws Exception {
+                List<FileItem> items = new ArrayList<>();
+
+                // 添加"此电脑"虚拟项
+                items.add(new FileItem(Paths.get("此电脑")) {
+                    @Override
+                    public String getName() {
+                        return "此电脑";
+                    }
+
+                    @Override
+                    public String getType() {
+                        return "系统文件夹";
+                    }
+
+                    @Override
+                    public long getSize() {
+                        return -1;
+                    }
+
+                    @Override
+                    public boolean isDirectory() {
+                        return true;
+                    }
+                });
+
+                // 获取所有磁盘驱动器
+                FileSystem fs = FileSystems.getDefault();
+                for (Path root : fs.getRootDirectories()) {
+                    try {
+                        // 检查是否有访问权限
+                        if (Files.exists(root) && Files.isReadable(root)) {
+                            FileStore store = Files.getFileStore(root);
+                            String displayName = root.toString();
+
+                            FileItem driveItem = new FileItem(root) {
+                                @Override
+                                public String getName() {
+                                    String name = super.getName();
+                                    try {
+                                        FileStore store = Files.getFileStore(this.getPath());
+                                        String displayName = store.name();
+                                        if (displayName != null && !displayName.isEmpty()) {
+                                            return name + " (" + displayName + ")";
+                                        }
+                                    } catch (IOException e) {
+                                        // 忽略异常，使用默认名称
+                                    }
+                                    return name;
+                                }
+
+                                @Override
+                                public String getType() {
+                                    try {
+                                        FileStore store = Files.getFileStore(this.getPath());
+                                        return store.type() + " 驱动器";
+                                    } catch (IOException e) {
+                                        return "本地磁盘";
+                                    }
+                                }
+
+                                @Override
+                                public long getSize() {
+                                    try {
+                                        FileStore store = Files.getFileStore(this.getPath());
+                                        return store.getTotalSpace();
+                                    } catch (IOException e) {
+                                        return -1;
+                                    }
+                                }
+                            };
+                            items.add(driveItem);
+                        }
+                    } catch (IOException e) {
+                        // 无法访问的驱动器，跳过
+                        System.err.println("无法访问驱动器: " + root + " - " + e.getMessage());
+                    }
+                }
+
+                // 添加常用文件夹
+                addSpecialFolders(items);
+
+                return items;
+            }
+        };
+
+        currentLoadingTask.setOnSucceeded(e -> {
+            Platform.runLater(() -> {
+                mainView.getTableView().getItems().setAll(currentLoadingTask.getValue());
+                if (mainView.getGridView().isVisible()) {
+                    loadGridViewForHomePage(currentLoadingTask.getValue());
+                }
+            });
+        });
+
+        currentLoadingTask.setOnFailed(e -> {
+            Platform.runLater(() -> {
+                showAlert("错误", "加载首页失败: " + currentLoadingTask.getException().getMessage());
+            });
+        });
+
+        // 使用线程池提交任务
+        threadPool.submitBackgroundTask(currentLoadingTask);
+    }
+
+    /**
+     * 添加特殊文件夹到首页
+     */
+    private void addSpecialFolders(List<FileItem> items) {
+        // 桌面
+        Path desktop = Paths.get(System.getProperty("user.home"), "Desktop");
+        if (Files.exists(desktop)) {
+            items.add(new FileItem(desktop) {
+                @Override
+                public String getName() {
+                    return "桌面";
+                }
+            });
+        }
+
+        // 文档
+        Path documents = Paths.get(System.getProperty("user.home"), "Documents");
+        if (Files.exists(documents)) {
+            items.add(new FileItem(documents) {
+                @Override
+                public String getName() {
+                    return "文档";
+                }
+            });
+        }
+
+        // 下载
+        Path downloads = Paths.get(System.getProperty("user.home"), "Downloads");
+        if (Files.exists(downloads)) {
+            items.add(new FileItem(downloads) {
+                @Override
+                public String getName() {
+                    return "下载";
+                }
+            });
+        }
+
+        // 图片
+        Path pictures = Paths.get(System.getProperty("user.home"), "Pictures");
+        if (Files.exists(pictures)) {
+            items.add(new FileItem(pictures) {
+                @Override
+                public String getName() {
+                    return "图片";
+                }
+            });
+        }
+    }
+
+    /**
+     * 为首页加载网格视图
+     */
+    private void loadGridViewForHomePage(List<FileItem> items) {
+        mainView.clearGridView();
+
+        int col = 0, row = 0;
+        int maxCols = 6;
+
+        for (FileItem item : items) {
+            if (col >= maxCols) {
+                col = 0;
+                row++;
+            }
+
+            Button button = mainView.addGridItem(item, col, row);
+
+            // 为按钮添加点击事件
+            button.setOnMouseClicked(event -> {
+                if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2) {
+                    if (item.getPath().toString().equals("此电脑")) {
+                        // 已经在首页，不做任何操作
+                    } else if (Files.isDirectory(item.getPath())) {
+                        navigateTo(item.getPath());
+                    } else {
+                        openFile(item.getPath());
+                    }
+                }
+            });
+
+            col++;
+        }
+    }
+
     private void initializeClipboardListener() {
         // 监听剪贴板是否为空的变化
         clipboardManager.emptyProperty().addListener((obs, wasEmpty, isEmpty) -> {
@@ -272,38 +507,89 @@ public class FileExplorerController {
     }
 
     private void loadDirectoryTree() {
-        TreeItem<Path> rootItem = new TreeItem<>(Paths.get("文件系统"));  // 改为有意义的显示名称
+        // 创建根节点
+        TreeItem<Path> rootItem = new TreeItem<>(Paths.get("此电脑"));
         rootItem.setExpanded(true);
 
-        // 获取所有根目录
-        FileSystem fs = FileSystems.getDefault();
-        for (Path rootDir : fs.getRootDirectories()) {
-            TreeItem<Path> item = createTreeItem(rootDir);
-            rootItem.getChildren().add(item);
-        }
+        // 异步加载磁盘驱动器
+        Task<Void> loadTask = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                FileSystem fs = FileSystems.getDefault();
+                List<Path> roots = new ArrayList<>();
+
+                for (Path rootDir : fs.getRootDirectories()) {
+                    roots.add(rootDir);
+                }
+
+                Platform.runLater(() -> {
+                    for (Path rootDir : roots) {
+                        try {
+                            // 检查访问权限
+                            if (Files.exists(rootDir) && Files.isReadable(rootDir)) {
+                                TreeItem<Path> item = createTreeItem(rootDir);
+                                rootItem.getChildren().add(item);
+                            }
+                        } catch (SecurityException e) {
+                            System.err.println("没有权限访问: " + rootDir);
+                        }
+                    }
+                });
+
+                return null;
+            }
+        };
+
+        loadTask.setOnFailed(e -> {
+            Platform.runLater(() -> {
+                showAlert("警告", "部分磁盘驱动器无法加载: " + e.getSource().getException().getMessage());
+            });
+        });
+
+        threadPool.submitBackgroundTask(loadTask);
 
         mainView.getTreeView().setRoot(rootItem);
 
-        // 懒加载：展开时加载子目录
-        mainView.getTreeView().setCellFactory(new Callback<>() {
+        // 设置TreeCell工厂
+        mainView.getTreeView().setCellFactory(tv -> new TreeCell<>() {
             @Override
-            public TreeCell<Path> call(TreeView<Path> param) {
-                return new TreeCell<>() {
-                    @Override
-                    protected void updateItem(Path item, boolean empty) {
-                        super.updateItem(item, empty);
-                        if (empty || item == null) {
-                            setText(null);
-                        } else {
-                            setText(item.getFileName() != null ? item.getFileName().toString() : item.toString());
+            protected void updateItem(Path item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    if (item.toString().equals("此电脑")) {
+                        setText("此电脑");
+                    } else {
+                        String displayName = item.getFileName() != null ?
+                                item.getFileName().toString() : item.toString();
+
+                        // 为磁盘驱动器添加盘符
+                        if (item.getParent() == null) {
+                            try {
+                                FileStore store = Files.getFileStore(item);
+                                String storeName = store.name();
+                                if (storeName != null && !storeName.isEmpty()) {
+                                    displayName += " (" + storeName + ")";
+                                }
+                            } catch (IOException e) {
+                                // 忽略异常
+                            }
+                        }
+                        setText(displayName);
+                    }
+
+                    // 添加图标
+                    if (Files.isDirectory(item) || item.toString().equals("此电脑")) {
+                        ImageView icon = IconManager.getInstance().createFolderIconView(16);
+                        if (icon != null) {
+                            setGraphic(icon);
                         }
                     }
-                };
+                }
             }
         });
-
-        // 展开事件加载子项
-        rootItem.getChildren().forEach(this::addExpansionListener);
     }
 
     private ContextMenu createTreeContextMenu() {
@@ -396,6 +682,9 @@ public class FileExplorerController {
             currentLoadingTask.cancel();
         }
 
+        // 更新状态栏
+        mainView.getStatusLabel().setText("正在加载: " + dir);
+
         currentLoadingTask = new Task<>() {
             @Override
             protected List<FileItem> call() throws Exception {
@@ -411,6 +700,14 @@ public class FileExplorerController {
                         }
                         items.add(new FileItem(entry));
                     }
+                } catch (AccessDeniedException e) {
+                    Platform.runLater(() -> {
+                        showAlert("访问被拒绝", "无法访问目录: " + dir, Alert.AlertType.WARNING);
+                    });
+                } catch (IOException e) {
+                    Platform.runLater(() -> {
+                        showAlert("错误", "无法读取目录: " + e.getMessage());
+                    });
                 }
                 return items;
             }
@@ -422,12 +719,14 @@ public class FileExplorerController {
                 if (mainView.getGridView().isVisible()) {
                     loadGridView(dir);
                 }
+                mainView.getStatusLabel().setText("就绪 - 共 " + currentLoadingTask.getValue().size() + " 个项目");
             });
         });
 
         currentLoadingTask.setOnFailed(e -> {
             Platform.runLater(() -> {
                 showAlert("错误", "加载文件失败: " + currentLoadingTask.getException().getMessage());
+                mainView.getStatusLabel().setText("加载失败");
             });
         });
 
@@ -954,16 +1253,40 @@ public class FileExplorerController {
     }
 
     private void navigateTo(Path newPath) {
-        if (!newPath.equals(currentPath)) {
-            currentPath = newPath;
-            addToHistory(currentPath);
-            loadFiles(currentPath);
-            updatePathField();
+        if (newPath == null) {
+            loadHomePage();
+            return;
+        }
 
-            // 更新树视图选择
-            selectInTreeView(currentPath);
+        try {
+            if (!Files.exists(newPath)) {
+                showAlert("错误", "路径不存在: " + newPath);
+                return;
+            }
+
+            if (!Files.isDirectory(newPath)) {
+                openFile(newPath);
+                return;
+            }
+
+            if (!Files.isReadable(newPath)) {
+                showAlert("错误", "没有权限访问: " + newPath);
+                return;
+            }
+
+            if (!newPath.equals(currentPath)) {
+                currentPath = newPath;
+                addToHistory(currentPath);
+                loadFiles(currentPath);
+                updatePathField();
+                selectInTreeView(currentPath);
+            }
+        } catch (Exception e) {
+            showAlert("错误", "无法访问路径: " + newPath + " - " + e.getMessage());
         }
     }
+
+
 
     private void goBack() {
         if (currentIndex > 0) {
@@ -1000,7 +1323,9 @@ public class FileExplorerController {
     }
 
     private void updatePathField() {
-        if (currentPath != null) {
+        if (currentPath == null) {
+            mainView.getPathField().setText("此电脑");
+        } else {
             mainView.getPathField().setText(currentPath.toAbsolutePath().toString());
         }
     }
