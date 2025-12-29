@@ -89,11 +89,6 @@ public class DetailsDialog extends Dialog<Void> {
     }
 
     private String getFileType(Path path) {
-        try {
-            String contentType = Files.probeContentType(path);
-            return contentType != null ? contentType : "未知文件";
-        } catch (IOException e) {
-            return "未知";
-        }
+        return FileUtils.getFileTypeDescription(path);
     }
 }

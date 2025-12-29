@@ -39,7 +39,8 @@ public class FileItem {
                 tempType = "文件夹";
                 tempSize = -1;
             } else {
-                tempType = getFileType(path);
+                // 使用FileUtils中的方法获取文件类型描述
+                tempType = FileUtils.getFileTypeDescription(path);
                 tempSize = attrs.size();
             }
         } catch (IOException e) {
@@ -78,15 +79,6 @@ public class FileItem {
             return imageView;
         }
         return null;
-    }
-
-    private String getFileType(Path path) {
-        try {
-            String contentType = Files.probeContentType(path);
-            return contentType != null ? contentType : "文件";
-        } catch (IOException e) {
-            return "未知";
-        }
     }
 
     // Getters for properties (用于JavaFX绑定)
