@@ -114,7 +114,7 @@ public class SearchTask extends Task<List<FileItem>> {
                                         case "搜索压缩文件":
                                             matches = isArchiveFile(path);
                                             break;
-                                        case "检索大文件":
+                                        case "检索大文件(100MB+,可能需要等待)":
                                             // 定义大文件为 > 100MB
                                             matches = attrs.size() > 100 * 1024 * 1024;
                                             break;

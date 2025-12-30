@@ -128,7 +128,7 @@ public class MainView {
         searchModeComboBox.getItems().addAll(
                 "通配符匹配", "字符串匹配", "文本文件内容通配符匹配",
                 "搜索图片", "搜索音频", "搜索视频", "搜索文档",
-                "搜索压缩文件", "检索大文件"
+                "搜索压缩文件", "检索大文件(100MB+,可能需要等待)"
         );
         searchModeComboBox.setValue("字符串匹配"); // 默认模式
         searchModeComboBox.setPrefWidth(150);
