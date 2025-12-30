@@ -15,11 +15,9 @@ public class Main extends Application {
 
         Scene scene = new Scene(mainView.getRoot(), 1200, 800);
 
-        // 加载Windows风格样式表
+        //样式表
         scene.getStylesheets().add(getClass().getResource("/com/fileexplorer/windows-style.css").toExternalForm());
 
-        // 也可以保留原来的样式表作为备用
-        // scene.getStylesheets().add(getClass().getResource("/com/fileexplorer/styles.css").toExternalForm());
 
         primaryStage.setScene(scene);
         primaryStage.setTitle("文件资源管理器");
