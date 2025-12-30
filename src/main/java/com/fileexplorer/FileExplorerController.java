@@ -168,6 +168,8 @@ public class FileExplorerController {
             // 重新加载当前目录的文件
             if (currentPath != null) {
                 loadFiles(currentPath);
+            } else {
+                loadHomePage();
             }
         });
 
@@ -199,6 +201,8 @@ public class FileExplorerController {
         mainView.getRefreshButton().setOnAction(e -> {
             if (currentPath != null) {
                 loadFiles(currentPath);
+            } else {
+                loadHomePage();
             }
         });
 
@@ -769,10 +773,34 @@ public class FileExplorerController {
 
     // 修改原有的 handleSearch 方法
     private void handleSearch(String pattern) {
-        if (currentPath == null) return;
+        if (pattern.trim().isEmpty()) {
+            // 如果搜索模式为空，重新加载当前目录或首页
+            if (currentPath != null) {
+                loadFiles(currentPath);
+            } else {
+                loadHomePage();
+            }
+            return;
+        }
 
-        // 创建搜索任务
-        SearchTask searchTask = new SearchTask(currentPath, pattern);
+        // 获取当前搜索模式
+        String mode = mainView.getSearchModeComboBox().getValue();
+
+        List<Path> searchRoots = new ArrayList<>();
+        if (currentPath != null) {
+            searchRoots.add(currentPath);
+        } else {
+            // 在首页，按盘符逐个搜索
+            FileSystem fs = FileSystems.getDefault();
+            for (Path root : fs.getRootDirectories()) {
+                if (Files.exists(root) && Files.isReadable(root)) {
+                    searchRoots.add(root);
+                }
+            }
+        }
+
+        // 创建搜索任务，支持多种模式
+        SearchTask searchTask = new SearchTask(searchRoots, pattern, mode);
         searchTask.setOnSucceeded(e -> Platform.runLater(() -> {
             mainView.getTableView().getItems().setAll(searchTask.getValue());
             if (mainView.getGridView().isVisible()) {

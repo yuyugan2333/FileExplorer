@@ -32,6 +32,7 @@ public class MainView {
     private Button upButton;
     private TextField pathField;
     private TextField searchField;
+    private ComboBox<String> searchModeComboBox; // 新增下拉菜单
     private Button refreshButton;
     private Button modeButton;
     private final Set<FileItem> selectedItemsInGrid = new HashSet<>();
@@ -122,6 +123,16 @@ public class MainView {
         searchField.setPromptText("搜索文件...");
         searchField.setPrefWidth(200);
 
+        // 新增搜索模式下拉菜单
+        searchModeComboBox = new ComboBox<>();
+        searchModeComboBox.getItems().addAll(
+                "通配符匹配", "字符串匹配", "文本文件内容通配符匹配",
+                "搜索图片", "搜索音频", "搜索视频", "搜索文档",
+                "搜索压缩文件", "检索大文件"
+        );
+        searchModeComboBox.setValue("字符串匹配"); // 默认模式
+        searchModeComboBox.setPrefWidth(150);
+
         // 刷新按钮
         refreshButton = createToolbarButton("刷新", "刷新", "text-button");
 
@@ -137,7 +148,7 @@ public class MainView {
                 separator1,
                 pathField,
                 separator2,
-                searchField, refreshButton, modeButton,
+                searchField, searchModeComboBox, refreshButton, modeButton,
                 spacer
         );
     }
@@ -436,6 +447,10 @@ public class MainView {
             }
         }
         return null;
+    }
+
+    public ComboBox<String> getSearchModeComboBox() {
+        return searchModeComboBox;
     }
 
     public Button getRefreshButton() {
