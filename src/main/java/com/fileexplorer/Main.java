@@ -5,6 +5,9 @@ import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
 
+/**
+ * 应用程序入口类，负责启动JavaFX界面。
+ */
 public class Main extends Application {
     private FileExplorerController controller;
 
@@ -15,21 +18,23 @@ public class Main extends Application {
 
         Scene scene = new Scene(mainView.getRoot(), 1200, 800);
 
-        //样式表
+        // 添加样式表
         scene.getStylesheets().add(getClass().getResource("/com/fileexplorer/windows-style.css").toExternalForm());
-
 
         primaryStage.setScene(scene);
         primaryStage.setTitle("文件资源管理器");
 
         // 设置窗口图标
         try {
-            primaryStage.getIcons().add(new Image(getClass().getResourceAsStream("/com/fileexplorer/icons/folder.png")));
+            Image icon = new Image(getClass().getResourceAsStream("/com/fileexplorer/icons/folder.png"));
+            if (icon != null) {
+                primaryStage.getIcons().add(icon);
+            }
         } catch (Exception e) {
-            // 忽略图标加载失败
+            System.err.println("图标加载失败: " + e.getMessage());
         }
 
-        // 添加窗口关闭事件处理
+        // 添加关闭事件
         primaryStage.setOnCloseRequest(event -> {
             if (controller != null) {
                 controller.shutdown();

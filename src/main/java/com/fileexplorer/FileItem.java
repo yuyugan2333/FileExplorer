@@ -11,6 +11,9 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 
+/**
+ * 文件项模型类，封装文件属性。
+ */
 public class FileItem {
     private final StringProperty name;
     private final StringProperty type;
@@ -22,7 +25,6 @@ public class FileItem {
 
     public FileItem(Path path) {
         this.path = path;
-        // 特殊处理"此电脑"路径
         if (path.toString().equals("此电脑")) {
             this.name = new SimpleStringProperty("此电脑");
             this.isDirectory = true;
@@ -30,8 +32,7 @@ public class FileItem {
             this.size = new SimpleLongProperty(-1);
             this.modifiedTime = new SimpleObjectProperty<>(LocalDateTime.now());
         } else {
-            this.name = new SimpleStringProperty(path.getFileName() != null ?
-                    path.getFileName().toString() : path.toString());
+            this.name = new SimpleStringProperty(path.getFileName() != null ? path.getFileName().toString() : path.toString());
             this.isDirectory = Files.isDirectory(path);
 
             String tempType;
@@ -40,14 +41,12 @@ public class FileItem {
 
             try {
                 BasicFileAttributes attrs = Files.readAttributes(path, BasicFileAttributes.class);
-                tempModified = LocalDateTime.ofInstant(attrs.lastModifiedTime().toInstant(),
-                        ZoneId.systemDefault());
+                tempModified = LocalDateTime.ofInstant(attrs.lastModifiedTime().toInstant(), ZoneId.systemDefault());
 
                 if (isDirectory) {
                     tempType = "文件夹";
                     tempSize = -1;
                 } else {
-                    // 使用FileUtils中的方法获取文件类型描述
                     tempType = FileUtils.getFileTypeDescription(path);
                     tempSize = attrs.size();
                 }
@@ -61,7 +60,6 @@ public class FileItem {
             this.modifiedTime = new SimpleObjectProperty<>(tempModified);
         }
 
-        // 初始化图标
         Image tempIcon = IconManager.getInstance().getIconForFile(path);
         this.icon = new SimpleObjectProperty<>(tempIcon);
     }
@@ -90,9 +88,8 @@ public class FileItem {
         return null;
     }
 
-    // Getters for properties (用于JavaFX绑定)
     public boolean isDrive() {
-        return false; // 默认不是驱动器，在首页创建时覆盖
+        return false;
     }
 
     public StringProperty nameProperty() {
@@ -111,7 +108,6 @@ public class FileItem {
         return modifiedTime;
     }
 
-    // Simple getters (如果不需要Property)
     public String getName() {
         return name.get();
     }
@@ -136,7 +132,6 @@ public class FileItem {
         return isDirectory;
     }
 
-    // Setter 示例（如果需要更新）
     public void setSize(long newSize) {
         size.set(newSize);
     }
