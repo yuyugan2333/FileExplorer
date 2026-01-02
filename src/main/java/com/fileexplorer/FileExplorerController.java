@@ -241,16 +241,16 @@ public class FileExplorerController {
             });
         }
 
-        // 添加文档
-        Path documents = Paths.get(System.getProperty("user.home"), "Documents");
-        if (Files.exists(documents)) {
-            items.add(new FileItem(documents) {
-                @Override
-                public String getName() {
-                    return "文档";
-                }
-            });
-        }
+//        // 添加文档
+//        Path documents = Paths.get(System.getProperty("user.home"), "Documents");
+//        if (Files.exists(documents)) {
+//            items.add(new FileItem(documents) {
+//                @Override
+//                public String getName() {
+//                    return "文档";
+//                }
+//            });
+//        }
 
         // 添加下载
         Path downloads = Paths.get(System.getProperty("user.home"), "Downloads");
@@ -287,7 +287,6 @@ public class FileExplorerController {
 
     /**
      * 加载目录文件列表。
-     * @param dir 目录路径
      */
     public void loadFiles(Path dir) {
         if (currentLoadingTask != null && currentLoadingTask.isRunning()) {

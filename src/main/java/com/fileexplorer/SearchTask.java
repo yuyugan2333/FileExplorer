@@ -260,16 +260,7 @@ public class SearchTask extends Task<List<FileItem>> {
     }
 
     /**
-     * 将通配符模式编译为正则表达式模式
-     * 支持的通配符：
-     *   * - 匹配0个或多个任意字符
-     *   ? - 匹配单个任意字符
-     *   [abc] - 匹配a、b或c中的任意一个字符
-     *   [a-z] - 匹配a到z之间的任意一个字符
-     *   [!abc] 或 [^abc] - 匹配除了a、b、c之外的任意字符
-     *
-     * @param wildcard 通配符表达式
-     * @return 编译后的正则表达式模式
+     * 将通配符模式编译为正则表达式
      */
     private Pattern compileWildcardPattern(String wildcard) {
         // 转义正则表达式中的特殊字符
@@ -287,19 +278,13 @@ public class SearchTask extends Task<List<FileItem>> {
                 .replace("^", "\\^")
                 .replace("$", "\\$");
 
-        // 将通配符转换为正则表达式
-        // 注意：需要先转换?，再转换*
         regex = regex.replace("?", ".");
         regex = regex.replace("*", ".*");
 
-        // 处理字符类，如[abc]或[a-z]
-        // 由于我们已经转义了[和]，现在需要恢复它们
         regex = restoreCharacterClasses(regex);
 
-        // 添加行首和行尾锚点，确保完全匹配
         regex = "^" + regex + "$";
 
-        // 编译为不区分大小写的模式
         return Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
     }
 
@@ -352,9 +337,6 @@ public class SearchTask extends Task<List<FileItem>> {
 
     /**
      * 简单的通配符匹配方法（不编译正则表达式，适合少量匹配）
-     * @param text 要匹配的文本
-     * @param pattern 通配符模式
-     * @return 是否匹配
      */
     public static boolean wildcardMatch(String text, String pattern) {
         return wildcardMatch(text, pattern, 0, 0);

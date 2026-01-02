@@ -57,7 +57,7 @@ public class ClipboardManager {
         return new ArrayList<>(clipboardItems);
     }
 
-    // 新增：获取ObservableList的方法，用于监听
+    // 获取ObservableList的方法，用于监听
     public ObservableList<Path> getClipboardItemsObservable() {
         return clipboardItems;
     }
@@ -66,7 +66,7 @@ public class ClipboardManager {
         return isCutOperation.get();
     }
 
-    // 新增：获取BooleanProperty用于监听
+    // 获取BooleanProperty用于监听
     public BooleanProperty isCutOperationProperty() {
         return isCutOperation;
     }
@@ -79,7 +79,7 @@ public class ClipboardManager {
         return itemCount.get();
     }
 
-    // 新增：获取IntegerProperty用于监听
+    // 获取IntegerProperty用于监听
     public ReadOnlyIntegerProperty itemCountProperty() {
         return itemCount;
     }
@@ -88,7 +88,7 @@ public class ClipboardManager {
         return clipboardItems.contains(path);
     }
 
-    // 新增：获取只读的布尔属性表示是否为空
+    // 获取只读的布尔属性表示是否为空
     public ReadOnlyBooleanProperty emptyProperty() {
         SimpleBooleanProperty emptyProp = new SimpleBooleanProperty(clipboardItems.isEmpty());
 

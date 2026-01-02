@@ -9,15 +9,12 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * UI工具类，提供常见的对话框和警报方法，以复用代码。
+ * UI工具类，提供常见的对话框和警报方法。
  */
 public class UIUtils {
 
     /**
      * 显示警报对话框。
-     * @param title 标题
-     * @param message 消息
-     * @param type 警报类型
      */
     public static void showAlert(String title, String message, Alert.AlertType type) {
         Alert alert = new Alert(type);
@@ -29,8 +26,6 @@ public class UIUtils {
 
     /**
      * 显示错误警报（默认类型）。
-     * @param title 标题
-     * @param message 消息
      */
     public static void showAlert(String title, String message) {
         showAlert(title, message, Alert.AlertType.ERROR);
@@ -38,9 +33,6 @@ public class UIUtils {
 
     /**
      * 显示确认对话框。
-     * @param title 标题
-     * @param message 消息
-     * @return 用户是否确认
      */
     public static boolean showConfirmDialog(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
@@ -53,7 +45,6 @@ public class UIUtils {
 
     /**
      * 显示信息对话框。
-     * @param message 消息
      */
     public static void showInfo(String message) {
         showAlert("信息", message, Alert.AlertType.INFORMATION);
@@ -61,11 +52,6 @@ public class UIUtils {
 
     /**
      * 显示文本输入对话框。
-     * @param title 标题
-     * @param header 头部文本
-     * @param content 内容文本
-     * @param defaultValue 默认值
-     * @return 用户输入的值（可选）
      */
     public static Optional<String> showTextInputDialog(String title, String header, String content, String defaultValue) {
         TextInputDialog dialog = new TextInputDialog(defaultValue);
@@ -77,8 +63,6 @@ public class UIUtils {
 
     /**
      * 显示文件冲突对话框。
-     * @param conflicts 冲突文件列表
-     * @return 是否覆盖所有
      */
     public static boolean showConflictDialog(List<Path> conflicts) {
         StringBuilder message = new StringBuilder();

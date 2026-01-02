@@ -67,8 +67,12 @@ public class NavigationHandler {
         if (currentIndex > 0) {
             currentIndex--;
             Path path = history.get(currentIndex);
-            controller.setCurrentPath(path);
-            controller.loadFiles(path);
+            if (path == null) {
+                controller.loadHomePage();
+            } else {
+                controller.setCurrentPath(path);
+                controller.loadFiles(path);
+            }
             updatePathField();
             updateNavigationButtons();
             controller.treeViewHandler.selectInTreeView(path);
@@ -79,8 +83,12 @@ public class NavigationHandler {
         if (currentIndex < history.size() - 1) {
             currentIndex++;
             Path path = history.get(currentIndex);
-            controller.setCurrentPath(path);
-            controller.loadFiles(path);
+            if (path == null) {
+                controller.loadHomePage();
+            } else {
+                controller.setCurrentPath(path);
+                controller.loadFiles(path);
+            }
             updatePathField();
             updateNavigationButtons();
             controller.treeViewHandler.selectInTreeView(path);

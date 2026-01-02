@@ -34,13 +34,11 @@ public class BatchFileOperationTask extends Task<Void> {
     private final Path targetDir;
     private final Stage ownerStage;
 
-    // 使用JavaFX属性替代Atomic类型，以便绑定
     private final IntegerProperty completedFiles = new SimpleIntegerProperty(0);
     private final IntegerProperty failedFiles = new SimpleIntegerProperty(0);
     private final LongProperty processedBytes = new SimpleLongProperty(0);
     private final LongProperty totalBytes = new SimpleLongProperty(0);
 
-    // 线程池
     private ExecutorService threadPool;
     private final int maxThreads;
 
@@ -52,7 +50,7 @@ public class BatchFileOperationTask extends Task<Void> {
 
         // 根据文件数量动态设置线程数，但限制最大线程数
         int fileCount = sourcePaths.size();
-        this.maxThreads = Math.min(Math.max(2, fileCount), Runtime.getRuntime().availableProcessors() * 2);
+        this.maxThreads = Math.min(Math.max(4, fileCount), Runtime.getRuntime().availableProcessors() * 2);
     }
 
     // 添加getter方法用于属性访问
@@ -64,15 +62,12 @@ public class BatchFileOperationTask extends Task<Void> {
     @Override
     protected Void call() throws Exception {
         try {
-            // 步骤1：计算总文件大小
             calculateTotalSize();
 
             if (isCancelled()) return null;
 
-            // 步骤2：执行批量操作
             executeBatchOperation();
 
-            // 步骤3：更新完成状态
             if (!isCancelled()) {
                 updateMessage("操作完成");
                 updateProgress(1.0, 1.0);
@@ -111,22 +106,21 @@ public class BatchFileOperationTask extends Task<Void> {
             futures.add(future);
         }
 
-        // 等待所有计算完成
-        long[] totalSize = new long[1]; // 使用数组包装
+        long[] totalSize = new long[1];
         for (Future<Long> future : futures) {
             if (isCancelled()) break;
             try {
                 totalSize[0] += future.get();
             } catch (Exception e) {
-                // 忽略计算错误
+                //忽略错误
             }
         }
 
         calcPool.shutdown();
         calcPool.awaitTermination(1, TimeUnit.MINUTES);
 
-        // 在JavaFX应用线程上更新属性
-        final long finalTotalSize = totalSize[0]; // 创建final变量
+        //在JavaFX应用线程上更新属性
+        final long finalTotalSize = totalSize[0];
         Platform.runLater(() -> {
             totalBytes.set(finalTotalSize);
         });
