@@ -23,36 +23,34 @@ import java.util.stream.Collectors;
  * 文件操作处理类，管理复制、删除、重命名等操作。
  */
 public class FileOperationHandler {
-    private final FileExplorerController controller;
-    private final MainView mainView;
+    private final Controller controller;
 
-    public FileOperationHandler(FileExplorerController controller, MainView mainView) {
+    public FileOperationHandler(Controller controller) {
         this.controller = controller;
-        this.mainView = mainView;
     }
 
     public void initializeClipboardListener() {
         ClipboardManager clipboard = controller.getClipboardManager();
         clipboard.emptyProperty().addListener((obs, wasEmpty, isEmpty) -> Platform.runLater(() -> {
             if (isEmpty) {
-                mainView.getStatusLabel().setText("就绪");
+                controller.getStatusLabel().setText("就绪");
             } else {
                 String operation = clipboard.isCutOperation() ? "剪切" : "复制";
-                mainView.getStatusLabel().setText(String.format("%s %d 个项目到剪贴板", operation, clipboard.getItemCount()));
+                controller.getStatusLabel().setText(String.format("%s %d 个项目到剪贴板", operation, clipboard.getItemCount()));
             }
         }));
 
         clipboard.isCutOperationProperty().addListener((obs, oldValue, newValue) -> Platform.runLater(() -> {
             if (!clipboard.isEmpty()) {
                 String operation = newValue ? "剪切" : "复制";
-                mainView.getStatusLabel().setText(String.format("%s %d 个项目到剪贴板", operation, clipboard.getItemCount()));
+                controller.getStatusLabel().setText(String.format("%s %d 个项目到剪贴板", operation, clipboard.getItemCount()));
             }
         }));
 
         clipboard.itemCountProperty().addListener((obs, oldCount, newCount) -> Platform.runLater(() -> {
             if (newCount.intValue() > 0) {
                 String operation = clipboard.isCutOperation() ? "剪切" : "复制";
-                mainView.getStatusLabel().setText(String.format("%s %d 个项目到剪贴板", operation, newCount));
+                controller.getStatusLabel().setText(String.format("%s %d 个项目到剪贴板", operation, newCount));
             }
         }));
     }
@@ -135,7 +133,7 @@ public class FileOperationHandler {
         MenuItem properties = new MenuItem("属性");
         properties.setOnAction(e -> showProperties());
 
-        paste.disableProperty().bind(Bindings.createBooleanBinding(() -> controller.getClipboardManager().isEmpty() || controller.getCurrentPath() == null, mainView.getPathField().textProperty()));
+        paste.disableProperty().bind(Bindings.createBooleanBinding(() -> controller.getClipboardManager().isEmpty() || controller.getCurrentPath() == null, controller.getPathField().textProperty()));
 
         menu.getItems().addAll(copy, cut, paste, new SeparatorMenuItem(), delete, rename, newFolder, new SeparatorMenuItem(), properties);
         return menu;
@@ -145,12 +143,12 @@ public class FileOperationHandler {
         if (event.getButton() == MouseButton.PRIMARY) {
             if (event.getClickCount() == 2) {
                 if (Files.isDirectory(item.getPath())) {
-                    controller.navigationHandler.navigateTo(item.getPath());
+                    controller.getNavigationHandler().navigateTo(item.getPath());
                 } else {
                     openFile(item.getPath());
                 }
             } else {
-                Set<FileItem> selected = mainView.getSelectedItemsInGrid();
+                Set<FileItem> selected = controller.getSelectedItemsInGrid();
                 if (event.isControlDown()) {
                     if (selected.contains(item)) {
                         selected.remove(item);
@@ -162,7 +160,7 @@ public class FileOperationHandler {
                 } else if (event.isShiftDown()) {
                     // 范围选择逻辑（可选实现）
                 } else {
-                    for (Node node : mainView.getGridView().getChildren()) {
+                    for (Node node : controller.getGridView().getChildren()) {
                         if (node instanceof Button) {
                             node.getStyleClass().remove("selected");
                         }
@@ -290,7 +288,7 @@ public class FileOperationHandler {
     }
 
     public void copySelected() {
-        List<FileItem> selectedItems = mainView.getSelectedFileItems();
+        List<FileItem> selectedItems = controller.getSelectedFileItems();
         if (!selectedItems.isEmpty()) {
             List<Path> paths = selectedItems.stream().map(FileItem::getPath).collect(Collectors.toList());
             controller.getClipboardManager().setClipboard(paths, false);
@@ -299,7 +297,7 @@ public class FileOperationHandler {
     }
 
     public void cutSelected() {
-        List<FileItem> selectedItems = mainView.getSelectedFileItems();
+        List<FileItem> selectedItems = controller.getSelectedFileItems();
         if (!selectedItems.isEmpty()) {
             List<Path> paths = selectedItems.stream().map(FileItem::getPath).collect(Collectors.toList());
             controller.getClipboardManager().setClipboard(paths, true);
@@ -346,7 +344,7 @@ public class FileOperationHandler {
     }
 
     public void deleteSelected() {
-        List<FileItem> selectedItems = mainView.getSelectedFileItems();
+        List<FileItem> selectedItems = controller.getSelectedFileItems();
         if (selectedItems.isEmpty()) {
             return;
         }
@@ -363,7 +361,7 @@ public class FileOperationHandler {
     }
 
     public void renameSelected() {
-        FileItem selected = mainView.getSelectedFileItem();
+        FileItem selected = controller.getSelectedFileItem();
         if (selected == null) {
             return;
         }
@@ -384,33 +382,33 @@ public class FileOperationHandler {
     }
 
     public void showProperties() {
-        FileItem selected = mainView.getSelectedFileItem();
+        FileItem selected = controller.getSelectedFileItem();
         if (selected != null) {
             showFileDetails(selected.getPath());
         }
     }
 
     public void selectAll() {
-        if (mainView.isGridMode) {
-            for (Node node : mainView.getGridView().getChildren()) {
+        if (controller.isGridMode) {
+            for (Node node : controller.getGridView().getChildren()) {
                 if (node instanceof Button) {
                     Button button = (Button) node;
                     FileItem item = (FileItem) button.getUserData();
-                    mainView.getSelectedItemsInGrid().add(item);
+                    controller.getSelectedItemsInGrid().add(item);
                     button.getStyleClass().add("selected");
                 }
             }
         } else {
-            mainView.getTableView().getSelectionModel().selectAll();
+            controller.getTableView().getSelectionModel().selectAll();
         }
     }
 
     public void deselectAllInGrid() {
-        for (Node node : mainView.getGridView().getChildren()) {
+        for (Node node : controller.getGridView().getChildren()) {
             if (node instanceof Button) {
                 node.getStyleClass().remove("selected");
             }
         }
-        mainView.getSelectedItemsInGrid().clear();
+        controller.getSelectedItemsInGrid().clear();
     }
 }

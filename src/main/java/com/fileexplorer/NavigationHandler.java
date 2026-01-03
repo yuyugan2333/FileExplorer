@@ -10,14 +10,12 @@ import java.util.List;
  * 导航处理类，管理历史记录和路径导航。
  */
 public class NavigationHandler {
-    private final FileExplorerController controller;
-    private final MainView mainView;
+    private final Controller controller;
     private final List<Path> history = new ArrayList<>();
     private int currentIndex = -1;
 
-    public NavigationHandler(FileExplorerController controller, MainView mainView) {
+    public NavigationHandler(Controller controller) {
         this.controller = controller;
-        this.mainView = mainView;
     }
 
     public void addToHistory(Path path) {
@@ -103,17 +101,17 @@ public class NavigationHandler {
     }
 
     public void updateNavigationButtons() {
-        mainView.getBackButton().setDisable(currentIndex <= 0);
-        mainView.getForwardButton().setDisable(currentIndex >= history.size() - 1);
-        mainView.getUpButton().setDisable(controller.getCurrentPath() == null);
+        controller.getBackButton().setDisable(currentIndex <= 0);
+        controller.getForwardButton().setDisable(currentIndex >= history.size() - 1);
+        controller.getUpButton().setDisable(controller.getCurrentPath() == null);
     }
 
     public void updatePathField() {
-        mainView.getPathField().setText(controller.getCurrentPath() == null ? "此电脑" : controller.getCurrentPath().toAbsolutePath().toString());
+        controller.getPathField().setText(controller.getCurrentPath() == null ? "此电脑" : controller.getCurrentPath().toAbsolutePath().toString());
     }
 
     public void handlePathInput() {
-        String pathText = mainView.getPathField().getText().trim();
+        String pathText = controller.getPathField().getText().trim();
         if (pathText.equals("此电脑") || pathText.equalsIgnoreCase("Computer")) {
             controller.loadHomePage();
         } else if (!pathText.isEmpty()) {

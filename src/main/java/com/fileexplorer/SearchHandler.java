@@ -1,3 +1,4 @@
+// src/main/java/com/fileexplorer/SearchHandler.java
 package com.fileexplorer;
 
 import javafx.application.Platform;
@@ -19,17 +20,15 @@ import java.util.TimerTask;
  * 搜索处理类，管理搜索事件和任务。
  */
 public class SearchHandler {
-    private final FileExplorerController controller;
-    private final MainView mainView;
+    private final Controller controller;
     private Timer searchTimer;
 
-    public SearchHandler(FileExplorerController controller, MainView mainView) {
+    public SearchHandler(Controller controller) {
         this.controller = controller;
-        this.mainView = mainView;
     }
 
     public void bindSearchEvents() {
-        TextField searchField = mainView.getSearchField();
+        TextField searchField = controller.getSearchField();
 
         searchField.textProperty().addListener((observable, oldValue, newValue) -> {
             if (searchTimer != null) {
@@ -53,7 +52,7 @@ public class SearchHandler {
             controller.refresh();
         });
 
-        ToolBar toolBar = mainView.getToolBar();
+        ToolBar toolBar = controller.getToolBar();
         int searchIndex = toolBar.getItems().indexOf(searchField);
         if (searchIndex != -1) {
             toolBar.getItems().add(searchIndex + 1, clearSearchButton);
@@ -68,7 +67,7 @@ public class SearchHandler {
             return;
         }
 
-        String mode = mainView.getSearchModeComboBox().getValue();
+        String mode = controller.getSearchModeComboBox().getValue();
 
         List<Path> searchRoots = new ArrayList<>();
         if (controller.getCurrentPath() != null) {
@@ -84,8 +83,8 @@ public class SearchHandler {
 
         SearchTask searchTask = new SearchTask(searchRoots, pattern, mode);
         searchTask.setOnSucceeded(e -> Platform.runLater(() -> {
-            mainView.getTableView().getItems().setAll(searchTask.getValue());
-            if (mainView.getGridView().isVisible()) {
+            controller.getTableView().getItems().setAll(searchTask.getValue());
+            if (controller.getGridView().isVisible()) {
                 updateGridViewWithSearchResults(searchTask.getValue());
             }
         }));
@@ -95,20 +94,20 @@ public class SearchHandler {
     }
 
     private void updateGridViewWithSearchResults(List<FileItem> searchResults) {
-        if (!mainView.getGridView().isVisible()) {
+        if (!controller.getGridView().isVisible()) {
             return;
         }
 
-        mainView.getGridView().getChildren().clear();
-        mainView.getSelectedItemsInGrid().clear();
+        controller.getGridView().getChildren().clear();
+        controller.getSelectedItemsInGrid().clear();
 
         for (FileItem item : searchResults) {
-            Button button = mainView.addGridItem(item);
+            Button button = controller.addGridItem(item);
             if (item.isDirectory()) {
                 button.setStyle("-fx-background-color: #e3f2fd; -fx-border-color: #bbdefb;");
             }
             button.setOnMouseClicked(event -> controller.fileOperationHandler.handleGridItemClick(event, button, item));
-            mainView.getGridView().getChildren().add(button);
+            controller.getGridView().getChildren().add(button);
         }
     }
 }

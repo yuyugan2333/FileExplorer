@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane fx:id="root" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml" fx:controller="com.fileexplorer.Controller">
+    <top>
+        <ToolBar fx:id="toolBar">
+            <Button fx:id="backButton" text="←" />
+            <Button fx:id="forwardButton" text="→" />
+            <Button fx:id="upButton" text="↑" />
+            <Separator orientation="VERTICAL" />
+            <TextField fx:id="pathField" promptText="输入路径..." prefWidth="400.0" />
+            <Separator orientation="VERTICAL" />
+            <TextField fx:id="searchField" promptText="搜索文件..." prefWidth="200.0" />
+            <ComboBox fx:id="searchModeComboBox" prefWidth="150.0" />
+            <Button fx:id="refreshButton" text="刷新" />
+            <Button fx:id="modeButton" text="网格" />
+            <Region HBox.hgrow="ALWAYS" />
+        </ToolBar>
+    </top>
+    <left>
+        <ScrollPane fitToWidth="true" fitToHeight="true" minWidth="250.0" prefWidth="300.0" style="-fx-background: white; -fx-border-color: transparent;">
+            <TreeView fx:id="treeView" />
+        </ScrollPane>
+    </left>
+    <center>
+        <StackPane>
+            <ScrollPane fx:id="tableScroll" fitToWidth="true" fitToHeight="true" hbarPolicy="AS_NEEDED" vbarPolicy="AS_NEEDED">
+                <TableView fx:id="tableView" />
+            </ScrollPane>
+            <ScrollPane fx:id="gridScroll" fitToWidth="true" fitToHeight="true" hbarPolicy="AS_NEEDED" vbarPolicy="AS_NEEDED" visible="false">
+                <FlowPane fx:id="gridView" />
+            </ScrollPane>
+        </StackPane>
+    </center>
+    <bottom>
+        <HBox fx:id="statusBar">
+            <Label fx:id="statusLabel" text="就绪" />
+        </HBox>
+    </bottom>
+</BorderPane>

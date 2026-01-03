@@ -1,22 +1,28 @@
+// src/main/java/com/fileexplorer/Main.java
 package com.fileexplorer;
 
 import javafx.application.Application;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
+
+import java.io.IOException;
 
 /**
  * 应用程序入口类，负责启动JavaFX界面。
  */
 public class Main extends Application {
-    private FileExplorerController controller;
 
     @Override
-    public void start(Stage primaryStage) {
-        MainView mainView = new MainView();
-        controller = new FileExplorerController(mainView, primaryStage);
+    public void start(Stage primaryStage) throws IOException {
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/fileexplorer/main-view.fxml"));
+        Parent root = loader.load();
+        Controller controller = loader.getController();
+        controller.setPrimaryStage(primaryStage);
 
-        Scene scene = new Scene(mainView.getRoot(), 1200, 800);
+        Scene scene = new Scene(root, 1200, 800);
 
         // 添加样式表
         scene.getStylesheets().add(getClass().getResource("/com/fileexplorer/windows-style.css").toExternalForm());
@@ -42,9 +48,5 @@ public class Main extends Application {
         });
 
         primaryStage.show();
-    }
-
-    public static void main(String[] args) {
-        launch(args);
     }
 }

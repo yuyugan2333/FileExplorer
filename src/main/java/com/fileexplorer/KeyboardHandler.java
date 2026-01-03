@@ -6,13 +6,11 @@ import javafx.scene.input.KeyEvent;
  * 键盘事件处理类，管理快捷键。
  */
 class KeyboardHandler {
-    private final FileExplorerController controller;
-    private final MainView mainView;
+    private final Controller controller;
 
-    public KeyboardHandler(FileExplorerController controller, MainView mainView) {
+    public KeyboardHandler(Controller controller) {
         this.controller = controller;
-        this.mainView = mainView;
-        mainView.getRoot().addEventFilter(KeyEvent.KEY_PRESSED, this::handleKeyPressed);
+        controller.getRoot().addEventFilter(KeyEvent.KEY_PRESSED, this::handleKeyPressed);
     }
 
     private void handleKeyPressed(KeyEvent event) {

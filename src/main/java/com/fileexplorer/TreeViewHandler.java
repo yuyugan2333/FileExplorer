@@ -1,3 +1,4 @@
+// src/main/java/com/fileexplorer/TreeViewHandler.java
 package com.fileexplorer;
 
 import javafx.application.Platform;
@@ -16,16 +17,14 @@ import java.util.List;
  * 目录树视图处理类，管理树加载和事件。
  */
 public class TreeViewHandler {
-    private final FileExplorerController controller;
-    private final MainView mainView;
+    private final Controller controller;
 
-    public TreeViewHandler(FileExplorerController controller, MainView mainView) {
+    public TreeViewHandler(Controller controller) {
         this.controller = controller;
-        this.mainView = mainView;
     }
 
     public void loadDirectoryTree() {
-        TreeItem<Path> rootItem = mainView.getTreeView().getRoot();
+        TreeItem<Path> rootItem = controller.getTreeView().getRoot();
         if (rootItem == null) {
             return;
         }
@@ -67,7 +66,7 @@ public class TreeViewHandler {
 
         MenuItem newFolder = new MenuItem("新建文件夹");
         newFolder.setOnAction(e -> {
-            TreeItem<Path> selected = mainView.getTreeView().getSelectionModel().getSelectedItem();
+            TreeItem<Path> selected = controller.getTreeView().getSelectionModel().getSelectedItem();
             if (selected != null && selected.getValue() != null) {
                 Path targetPath = selected.getValue();
                 UIUtils.showTextInputDialog("新建文件夹", "在 " + targetPath.getFileName() + " 中创建新文件夹", "请输入文件夹名称:", "新建文件夹").ifPresent(folderName -> {
@@ -96,7 +95,7 @@ public class TreeViewHandler {
 
         MenuItem properties = new MenuItem("属性");
         properties.setOnAction(e -> {
-            TreeItem<Path> selected = mainView.getTreeView().getSelectionModel().getSelectedItem();
+            TreeItem<Path> selected = controller.getTreeView().getSelectionModel().getSelectedItem();
             if (selected != null && selected.getValue() != null) {
                 controller.fileOperationHandler.showFileDetails(selected.getValue());
             }
@@ -134,18 +133,18 @@ public class TreeViewHandler {
 
     public void selectInTreeView(Path path) {
         if (path == null) {
-            TreeItem<Path> root = mainView.getTreeView().getRoot();
+            TreeItem<Path> root = controller.getTreeView().getRoot();
             if (root != null) {
-                mainView.getTreeView().getSelectionModel().select(root);
+                controller.getTreeView().getSelectionModel().select(root);
             }
             return;
         }
 
-        TreeItem<Path> root = mainView.getTreeView().getRoot();
+        TreeItem<Path> root = controller.getTreeView().getRoot();
         if (root != null) {
             TreeItem<Path> found = findTreeItem(root, path);
             if (found != null) {
-                mainView.getTreeView().getSelectionModel().select(found);
+                controller.getTreeView().getSelectionModel().select(found);
                 TreeItem<Path> parent = found.getParent();
                 while (parent != null && parent != root) {
                     parent.setExpanded(true);
@@ -171,9 +170,9 @@ public class TreeViewHandler {
 
     public void selectRootInTree() {
         Platform.runLater(() -> {
-            TreeItem<Path> root = mainView.getTreeView().getRoot();
+            TreeItem<Path> root = controller.getTreeView().getRoot();
             if (root != null) {
-                mainView.getTreeView().getSelectionModel().select(root);
+                controller.getTreeView().getSelectionModel().select(root);
             }
         });
     }
