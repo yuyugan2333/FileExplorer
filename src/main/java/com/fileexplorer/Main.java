@@ -1,4 +1,3 @@
-// src/main/java/com/fileexplorer/Main.java
 package com.fileexplorer;
 
 import javafx.application.Application;

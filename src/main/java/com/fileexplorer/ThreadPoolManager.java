@@ -29,7 +29,7 @@ public class ThreadPoolManager {
 
     private ThreadPoolManager() {
         // 文件操作线程池 - IO密集型，线程数可以多一些
-        int fileThreads = Math.max(2, Runtime.getRuntime().availableProcessors() * 2);
+        int fileThreads = Math.max(8, Runtime.getRuntime().availableProcessors() * 2);
         fileOperationExecutor = Executors.newFixedThreadPool(fileThreads, new NamedThreadFactory("FileOp-"));
 
         // UI更新线程池 - 单线程确保UI操作顺序执行

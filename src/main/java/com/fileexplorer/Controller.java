@@ -1,4 +1,3 @@
-// src/main/java/com/fileexplorer/Controller.java
 package com.fileexplorer;
 
 import javafx.application.Platform;
