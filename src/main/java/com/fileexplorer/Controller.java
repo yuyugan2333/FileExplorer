@@ -82,9 +82,6 @@ public class Controller {
         this.fileOperationHandler = new FileOperationHandler(this);
         this.treeViewHandler = new TreeViewHandler(this);
 
-        // 延迟到界面完全加载后初始化
-        Platform.runLater(this::postInitialize);
-
     }
 
     public void setPrimaryStage(Stage primaryStage) {
@@ -244,6 +241,9 @@ public class Controller {
         gridScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         gridScroll.getStyleClass().add("grid-scroll-pane");
         gridScroll.setVisible(false);
+
+        new KeyboardHandler(this);
+        Platform.runLater(this::postInitialize);
     }
 
     private void postInitialize() {
