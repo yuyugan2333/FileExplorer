@@ -1,9 +1,6 @@
 package com.fileexplorer;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -65,6 +62,20 @@ public class ThreadPoolManager {
     }
 
     /**
+     * 提交文件操作任务并返回Future
+     */
+    public Future<?> submitFileOperationFuture(Runnable task) {
+        activeTasks.incrementAndGet();
+        return fileOperationExecutor.submit(() -> {
+            try {
+                task.run();
+            } finally {
+                activeTasks.decrementAndGet();
+            }
+        });
+    }
+
+    /**
      * 提交UI更新任务（在UI线程中执行）
      */
     public void submitUIUpdate(Runnable task) {
@@ -99,10 +110,58 @@ public class ThreadPoolManager {
     }
 
     /**
+     * 获取文件操作线程池（供高级使用）
+     */
+    public ExecutorService getFileOperationExecutor() {
+        return fileOperationExecutor;
+    }
+
+    /**
+     * 获取UI更新线程池
+     */
+    public ExecutorService getUiUpdateExecutor() {
+        return uiUpdateExecutor;
+    }
+
+    /**
+     * 获取后台任务线程池
+     */
+    public ExecutorService getBackgroundTaskExecutor() {
+        return backgroundTaskExecutor;
+    }
+
+    /**
+     * 获取定时任务线程池
+     */
+    public ScheduledExecutorService getScheduledExecutor() {
+        return scheduledExecutor;
+    }
+
+    /**
      * 获取活跃任务数
      */
     public int getActiveTaskCount() {
         return activeTasks.get();
+    }
+
+    /**
+     * 获取文件操作线程池的活跃线程数
+     */
+    public int getFileOperationPoolActiveCount() {
+        if (fileOperationExecutor instanceof ThreadPoolExecutor) {
+            return ((ThreadPoolExecutor) fileOperationExecutor).getActiveCount();
+        }
+        return 0;
+    }
+
+    /**
+     * 获取文件操作线程池的任务队列大小
+     */
+    public int getFileOperationPoolQueueSize() {
+        if (fileOperationExecutor instanceof ThreadPoolExecutor) {
+            return ((ThreadPoolExecutor) fileOperationExecutor).getQueue().size();
+        }
+        return 0;
     }
 
     /**

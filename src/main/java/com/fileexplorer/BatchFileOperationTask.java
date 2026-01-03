@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.concurrent.*;
 
 /**
- * 批量文件操作任务，支持多线程加速和统一进度显示
+ * 批量文件操作任务，使用统一的线程池管理器
  */
 public class BatchFileOperationTask extends Task<Void> {
     public enum OperationType {
@@ -39,18 +39,14 @@ public class BatchFileOperationTask extends Task<Void> {
     private final LongProperty processedBytes = new SimpleLongProperty(0);
     private final LongProperty totalBytes = new SimpleLongProperty(0);
 
-    private ExecutorService threadPool;
-    private final int maxThreads;
+    // 用于保存提交的任务Future，以便可以取消
+    private final List<Future<?>> submittedTasks = new CopyOnWriteArrayList<>();
 
     public BatchFileOperationTask(OperationType type, List<Path> sourcePaths, Path targetDir, Stage ownerStage) {
         this.type = type;
         this.sourcePaths = sourcePaths;
         this.targetDir = targetDir;
         this.ownerStage = ownerStage;
-
-        // 根据文件数量动态设置线程数，但限制最大线程数
-        int fileCount = sourcePaths.size();
-        this.maxThreads = Math.min(Math.max(4, fileCount), Runtime.getRuntime().availableProcessors() * 2);
     }
 
     // 添加getter方法用于属性访问
@@ -61,12 +57,14 @@ public class BatchFileOperationTask extends Task<Void> {
 
     @Override
     protected Void call() throws Exception {
+        ThreadPoolManager threadPoolManager = ThreadPoolManager.getInstance();
+
         try {
             calculateTotalSize();
 
             if (isCancelled()) return null;
 
-            executeBatchOperation();
+            executeBatchOperation(threadPoolManager);
 
             if (!isCancelled()) {
                 updateMessage("操作完成");
@@ -78,7 +76,8 @@ public class BatchFileOperationTask extends Task<Void> {
                 throw e;
             }
         } finally {
-            shutdownThreadPool();
+            // 取消所有已提交但未完成的任务
+            cancelSubmittedTasks();
         }
 
         return null;
@@ -90,37 +89,37 @@ public class BatchFileOperationTask extends Task<Void> {
     private void calculateTotalSize() throws IOException, InterruptedException {
         updateMessage("正在计算文件总大小...");
 
-        ExecutorService calcPool = Executors.newFixedThreadPool(maxThreads);
-        List<Future<Long>> futures = new CopyOnWriteArrayList<>();
+        // 使用CompletableFuture并行计算文件大小
+        List<CompletableFuture<Long>> futures = new CopyOnWriteArrayList<>();
+        ExecutorService executor = ThreadPoolManager.getInstance().getFileOperationExecutor();
 
         for (Path source : sourcePaths) {
             if (isCancelled()) break;
 
-            Future<Long> future = calcPool.submit(() -> {
+            CompletableFuture<Long> future = CompletableFuture.supplyAsync(() -> {
                 try {
                     return calculateFileSize(source);
                 } catch (IOException e) {
                     return 0L;
                 }
-            });
+            }, executor);
+
+            submittedTasks.add(future);
             futures.add(future);
         }
 
-        long[] totalSize = new long[1];
-        for (Future<Long> future : futures) {
+        long totalSize = 0;
+        for (CompletableFuture<Long> future : futures) {
             if (isCancelled()) break;
             try {
-                totalSize[0] += future.get();
+                totalSize += future.get();
             } catch (Exception e) {
-                //忽略错误
+                // 忽略错误
             }
         }
 
-        calcPool.shutdown();
-        calcPool.awaitTermination(1, TimeUnit.MINUTES);
-
-        //在JavaFX应用线程上更新属性
-        final long finalTotalSize = totalSize[0];
+        // 在JavaFX应用线程上更新属性
+        final long finalTotalSize = totalSize;
         Platform.runLater(() -> {
             totalBytes.set(finalTotalSize);
         });
@@ -159,22 +158,21 @@ public class BatchFileOperationTask extends Task<Void> {
     /**
      * 执行批量操作
      */
-    private void executeBatchOperation() throws Exception {
+    private void executeBatchOperation(ThreadPoolManager threadPoolManager) throws Exception {
         updateMessage("开始执行操作...");
 
-        threadPool = Executors.newFixedThreadPool(maxThreads);
-        List<Future<Void>> futures = new CopyOnWriteArrayList<>();
+        ExecutorService executor = threadPoolManager.getFileOperationExecutor();
+        List<CompletableFuture<Void>> futures = new CopyOnWriteArrayList<>();
 
         for (Path source : sourcePaths) {
             if (isCancelled()) break;
 
-            Future<Void> future = threadPool.submit(() -> {
+            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
                 try {
                     executeSingleOperation(source);
                     Platform.runLater(() -> {
                         completedFiles.set(completedFiles.get() + 1);
                     });
-                    return null;
                 } catch (Exception e) {
                     Platform.runLater(() -> {
                         failedFiles.set(failedFiles.get() + 1);
@@ -183,25 +181,26 @@ public class BatchFileOperationTask extends Task<Void> {
                         showWarning("操作失败", "处理文件失败: " + source.getFileName() +
                                 " - " + e.getMessage());
                     });
-                    throw e;
+                    throw new CompletionException(e);
                 }
-            });
+            }, executor);
+
+            submittedTasks.add(future);
             futures.add(future);
         }
 
-        for (Future<Void> future : futures) {
-            if (isCancelled()) break;
-            try {
-                future.get();
-            } catch (CancellationException e) {
-                // 任务被取消，正常退出
-            } catch (Exception e) {
-                // 记录错误但继续其他任务
-            }
-        }
+        // 等待所有任务完成
+        CompletableFuture<Void> allFutures = CompletableFuture.allOf(
+                futures.toArray(new CompletableFuture[0])
+        );
 
-        threadPool.shutdown();
-        threadPool.awaitTermination(10, TimeUnit.MINUTES);
+        try {
+            allFutures.get();
+        } catch (CancellationException e) {
+            // 任务被取消，正常退出
+        } catch (CompletionException e) {
+            // 有任务失败，继续处理其他任务
+        }
 
         updateMessage(String.format("操作完成。成功: %d, 失败: %d",
                 completedFiles.get(), failedFiles.get()));
@@ -365,23 +364,21 @@ public class BatchFileOperationTask extends Task<Void> {
     }
 
     /**
-     * 关闭线程池
+     * 取消所有已提交的任务
      */
-    private void shutdownThreadPool() {
-        if (threadPool != null && !threadPool.isShutdown()) {
-            threadPool.shutdownNow();
-            try {
-                threadPool.awaitTermination(5, TimeUnit.SECONDS);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+    private void cancelSubmittedTasks() {
+        for (Future<?> future : submittedTasks) {
+            if (!future.isDone()) {
+                future.cancel(true);
             }
         }
+        submittedTasks.clear();
     }
 
     @Override
     protected void cancelled() {
         updateMessage("操作已取消");
-        shutdownThreadPool();
+        cancelSubmittedTasks();
     }
 
     @Override
