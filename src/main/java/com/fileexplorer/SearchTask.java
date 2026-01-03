@@ -52,7 +52,6 @@ public class SearchTask extends Task<List<FileItem>> {
 
         for (Path startDir : searchRoots) {
             try {
-                // 使用walkFileTree进行遍历，可以更好地控制异常处理
                 Files.walkFileTree(startDir, EnumSet.noneOf(FileVisitOption.class), Integer.MAX_VALUE,
                         new SimpleFileVisitor<Path>() {
 
@@ -335,9 +334,6 @@ public class SearchTask extends Task<List<FileItem>> {
         return restored;
     }
 
-    /**
-     * 简单的通配符匹配方法（不编译正则表达式，适合少量匹配）
-     */
     public static boolean wildcardMatch(String text, String pattern) {
         return wildcardMatch(text, pattern, 0, 0);
     }

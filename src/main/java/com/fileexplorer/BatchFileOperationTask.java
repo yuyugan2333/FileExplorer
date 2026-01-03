@@ -162,24 +162,20 @@ public class BatchFileOperationTask extends Task<Void> {
     private void executeBatchOperation() throws Exception {
         updateMessage("开始执行操作...");
 
-        // 创建线程池
         threadPool = Executors.newFixedThreadPool(maxThreads);
         List<Future<Void>> futures = new CopyOnWriteArrayList<>();
 
-        // 提交所有任务
         for (Path source : sourcePaths) {
             if (isCancelled()) break;
 
             Future<Void> future = threadPool.submit(() -> {
                 try {
                     executeSingleOperation(source);
-                    // 在JavaFX应用线程上更新完成文件计数
                     Platform.runLater(() -> {
                         completedFiles.set(completedFiles.get() + 1);
                     });
                     return null;
                 } catch (Exception e) {
-                    // 在JavaFX应用线程上更新失败文件计数
                     Platform.runLater(() -> {
                         failedFiles.set(failedFiles.get() + 1);
                     });
@@ -193,7 +189,6 @@ public class BatchFileOperationTask extends Task<Void> {
             futures.add(future);
         }
 
-        // 等待所有任务完成
         for (Future<Void> future : futures) {
             if (isCancelled()) break;
             try {
@@ -205,7 +200,6 @@ public class BatchFileOperationTask extends Task<Void> {
             }
         }
 
-        // 等待线程池关闭
         threadPool.shutdown();
         threadPool.awaitTermination(10, TimeUnit.MINUTES);
 
